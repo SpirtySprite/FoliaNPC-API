@@ -96,7 +96,6 @@ main: com.yourplugin.YourPlugin
 version: 1.0.0
 api-version: '1.20'
 folia-supported: true
-softdepend: [PlaceholderAPI]   # optional; enables the placeholder bridge
 ```
 
 Use the `maven-shade-plugin` (or the Gradle Shadow plugin) to bundle it into your own jar — FoliaNPC has
