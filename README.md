@@ -71,20 +71,32 @@ happens on a server you believe meets the requirement.
 
 ## Installation
 
-It isn't published to a public repository yet, so install it to your local Maven repository first:
-
-```bash
-mvn install
-```
-
-Then depend on it and shade it into your plugin:
+**1. Depend on the core library:**
 
 ```xml
-<dependency>
-    <groupId>net.folianpc</groupId>
-    <artifactId>folianpc</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
-</dependency>
+	<repositories>
+		<repository>
+		    <id>jitpack.io</id>
+		    <url>https://jitpack.io</url>
+		</repository>
+	</repositories>
+
+	<dependency>
+	    <groupId>com.github.SpirtySprite</groupId>
+	    <artifactId>FoliaNPC-API</artifactId>
+	    <version>1.0.0</version>
+	</dependency>
+```
+
+**2. Mark your plugin Folia-ready** — required or it won't load on Folia:
+
+```yaml
+name: YourPlugin
+main: com.yourplugin.YourPlugin
+version: 1.0.0
+api-version: '1.20'
+folia-supported: true
+softdepend: [PlaceholderAPI]   # optional; enables the placeholder bridge
 ```
 
 Use the `maven-shade-plugin` (or the Gradle Shadow plugin) to bundle it into your own jar — FoliaNPC has
