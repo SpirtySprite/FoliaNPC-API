@@ -1,6 +1,7 @@
 package net.folianpc.internal.protocol.nms;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
 // One-shot animations (swing arm, etc). The packet's only public constructor wants a live Entity we
 // do not have, so it is allocated and its two int fields (entity id, action) are set directly.
@@ -25,13 +26,11 @@ final class Animations {
         return packet;
     }
 
-    // Declared in order: id then action. Grabbing the two int fields positionally avoids depending
-    // on obfuscated names.
     private static Field[] intFields(Class<?> type) {
         Field id = null;
         Field action = null;
         for (Field f : type.getDeclaredFields()) {
-            if (f.getType() == int.class) {
+            if (f.getType() == int.class && !Modifier.isStatic(f.getModifiers())) {
                 f.setAccessible(true);
                 if (id == null) {
                     id = f;

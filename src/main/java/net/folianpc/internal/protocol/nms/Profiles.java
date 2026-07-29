@@ -28,8 +28,13 @@ final class Profiles {
     private final Object updateListed;
 
     private Constructor<?> propertyCtor;
+
     private Method propertiesGetter;
     private Method propertiesPut;
+
+    private Constructor<?> profileCtor3;
+    private Constructor<?> propertyMapCtor;
+    private Method multimapOfOne;
 
     Profiles() {
         Class<?> update = Reflect.nms("network.protocol.game",
@@ -95,13 +100,18 @@ final class Profiles {
         return Reflect.newInstance(entryCtor, args);
     }
 
-    // GameProfile/PropertyMap dropped their multi-arg constructors at some point (present on 1.21.11,
-    // gone on 1.21.1's authlib build) - building via the 2-arg ctor and mutating the profile's own
-    // PropertyMap through getProperties() works on both, since that map has always been a live Multimap.
     private Object profile(NpcSnapshot npc, String mirrorValue, String mirrorSignature) {
-        Object profile = Reflect.newInstance(profileCtor, npc.uuid(), npc.profileName());
         String value = mirrorValue != null ? mirrorValue : npc.skinValue();
         String signature = mirrorValue != null ? mirrorSignature : npc.skinSignature();
+
+        if (value != null && propertyCtor != null && profileCtor3 != null) {
+            Object property = Reflect.newInstance(propertyCtor, "textures", value, signature);
+            Object multimap = Reflect.invoke(multimapOfOne, null, "textures", property);
+            Object properties = Reflect.newInstance(propertyMapCtor, multimap);
+            return Reflect.newInstance(profileCtor3, npc.uuid(), npc.profileName(), properties);
+        }
+
+        Object profile = Reflect.newInstance(profileCtor, npc.uuid(), npc.profileName());
         if (value != null && propertyCtor != null) {
             Object property = Reflect.newInstance(propertyCtor, "textures", value, signature);
             Object properties = Reflect.invoke(propertiesGetter, profile);
@@ -111,18 +121,50 @@ final class Profiles {
     }
 
     boolean skinsSupported() {
-        return propertyCtor != null;
+        return propertyCtor != null && (profileCtor3 != null || propertiesGetter != null);
     }
 
     private void resolveSkins() {
         try {
             Class<?> property = Reflect.tryClass("com.mojang.authlib.properties.Property");
-            Class<?> multimap = Reflect.tryClass("com.google.common.collect.Multimap");
             this.propertyCtor = Reflect.constructor(property, String.class, String.class, String.class);
-            this.propertiesGetter = Reflect.method(profileClass, "getProperties");
+        } catch (RuntimeException e) {
+            this.propertyCtor = null;
+            return;
+        }
+        resolveImmutablePropertyMapPath();
+        if (profileCtor3 == null) {
+            resolveMutablePropertyMapPath();
+        }
+    }
+
+    private void resolveImmutablePropertyMapPath() {
+        try {
+            Class<?> propertyMap = Reflect.tryClass("com.mojang.authlib.properties.PropertyMap");
+            Class<?> multimap = Reflect.tryClass("com.google.common.collect.Multimap");
+            Class<?> immutableListMultimap = Reflect.tryClass("com.google.common.collect.ImmutableListMultimap");
+            this.propertyMapCtor = Reflect.constructor(propertyMap, multimap);
+            this.multimapOfOne = Reflect.method(immutableListMultimap, "of", Object.class, Object.class);
+            this.profileCtor3 = Reflect.constructor(profileClass, UUID.class, String.class, propertyMap);
+        } catch (RuntimeException e) {
+            this.profileCtor3 = null;
+        }
+    }
+
+    private void resolveMutablePropertyMapPath() {
+        try {
+            Class<?> multimap = Reflect.tryClass("com.google.common.collect.Multimap");
+            // GameProfile.getProperties() was renamed to properties() at some point.
+            Method propertiesGetterMethod;
+            try {
+                propertiesGetterMethod = Reflect.method(profileClass, "getProperties");
+            } catch (RuntimeException renamed) {
+                propertiesGetterMethod = Reflect.method(profileClass, "properties");
+            }
+            this.propertiesGetter = propertiesGetterMethod;
             this.propertiesPut = multimap.getMethod("put", Object.class, Object.class);
         } catch (ReflectiveOperationException | RuntimeException e) {
-            this.propertyCtor = null;
+            this.propertiesGetter = null;
         }
     }
 

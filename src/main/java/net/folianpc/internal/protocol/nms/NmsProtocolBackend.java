@@ -27,6 +27,8 @@ import java.util.logging.Level;
 
 public final class NmsProtocolBackend implements ProtocolBackend {
 
+    private static final AtomicInteger FALLBACK_ENTITY_COUNTER = new AtomicInteger(Integer.MAX_VALUE - 1_000_000);
+
     private final Plugin plugin;
     private final String handlerName;
     private final Channels channels = new Channels();
@@ -74,6 +76,7 @@ public final class NmsProtocolBackend implements ProtocolBackend {
 
         Class<?> entity = Reflect.nms("world.entity", "Entity", "Entity");
         Class<?> entityType = Reflect.nms("world.entity", "EntityType", "EntityTypes");
+        Class<?> playerEntity = Reflect.nms("world.entity.player", "Player", "EntityHuman");
         Class<?> vec3 = Reflect.nms("world.phys", "Vec3", "Vec3D");
         Class<?> addEntity = Reflect.nms("network.protocol.game",
                 "ClientboundAddEntityPacket", "PacketPlayOutSpawnEntity");
@@ -83,10 +86,10 @@ public final class NmsProtocolBackend implements ProtocolBackend {
                 "ClientboundMoveEntityPacket", "PacketPlayOutEntity");
 
         this.packetClass = Reflect.nms("network.protocol", "Packet", "Packet");
-        this.entityCounter = (AtomicInteger) Reflect.staticField(entity, "ENTITY_COUNTER");
-        this.playerType = Reflect.staticField(entityType, "PLAYER");
-        this.typeByName = Reflect.method(entityType, "byString", String.class);
-        this.vec3Zero = Reflect.staticField(vec3, "ZERO");
+        this.typeByName = Reflect.methodByNameOrSignature(entityType, "byString", Optional.class, String.class);
+        this.entityCounter = resolveEntityCounter(entity);
+        this.playerType = resolvePlayerType(entityType, playerEntity);
+        this.vec3Zero = Reflect.staticFieldByNameOrType(vec3, "ZERO", vec3);
         this.removeEntitiesCtor = Reflect.constructor(removeEntities, int[].class);
         this.moveRotCtor = Reflect.constructor(Nms.nested(moveEntity, "Rot", "d"),
                 int.class, byte.class, byte.class, boolean.class);
@@ -119,6 +122,28 @@ public final class NmsProtocolBackend implements ProtocolBackend {
         this.teams = optional("name plates", Teams::new);
         this.equipment = optional("equipment", Equipment::new);
         this.animations = optional("animations", Animations::new);
+    }
+
+    private AtomicInteger resolveEntityCounter(Class<?> entity) {
+        try {
+            return (AtomicInteger) Reflect.staticFieldByNameOrType(entity, "ENTITY_COUNTER", AtomicInteger.class);
+        } catch (RuntimeException e) {
+            plugin.getLogger().warning("FoliaNPC: could not locate the server's entity-id counter ("
+                    + e.getMessage() + "); using an independent counter instead. NPC entity ids won't "
+                    + "collide with real game entities, but could collide with another FoliaNPC-using "
+                    + "plugin's NPCs on the same server if it also had to fall back.");
+            return FALLBACK_ENTITY_COUNTER;
+        }
+    }
+
+    private Object resolvePlayerType(Class<?> entityType, Class<?> playerEntity) {
+        try {
+            return Reflect.staticFieldByNameOrGenericType(entityType, "PLAYER", entityType, playerEntity);
+        } catch (RuntimeException e) {
+            Object found = Reflect.invoke(typeByName, null, "player");
+            return ((Optional<?>) found).orElseThrow(() ->
+                    new IllegalStateException("Could not resolve the player EntityType", e));
+        }
     }
 
     private <T> T optional(String feature, Supplier<T> factory) {
@@ -291,7 +316,7 @@ public final class NmsProtocolBackend implements ProtocolBackend {
         if (!interactions.isInteract(packet)) {
             return false;
         }
-        Interactions.Click click = interactions.decode(packet);
+        Interactions.Click click = interactions.decode(viewer, packet);
         return click != null && sink.handle(viewer, click.entityId(), click.type(), click.sneaking());
     }
 
