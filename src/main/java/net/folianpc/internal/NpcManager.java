@@ -1,5 +1,6 @@
 package net.folianpc.internal;
 
+import net.folianpc.api.Emote;
 import net.folianpc.api.NpcClickListener;
 import net.folianpc.api.event.NpcInteractEvent;
 import net.folianpc.api.event.NpcRemoveEvent;
@@ -19,6 +20,7 @@ import org.bukkit.plugin.Plugin;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -41,6 +43,7 @@ public final class NpcManager {
     private static final double SECONDS_PER_PASS = 0.1;
 
     private final Set<UUID> shouldSee = new HashSet<>();
+    private final Set<UUID> nearNow = new HashSet<>();
     private volatile boolean debug;
 
     private volatile java.util.function.LongSupplier clock = System::currentTimeMillis;
@@ -165,6 +168,82 @@ public final class NpcManager {
 
     public void animate(NpcImpl npc, int action) {
         forEachViewer(npc, (viewer, npcState) -> backend.animate(viewer, npcState.entityId(), action));
+    }
+
+    private record EmoteStep(float yawOffset, float pitchOffset, long delayTicks, boolean swing) {
+    }
+
+    // Relative to the NPC's current heading at the moment playEmote() is called, not its live position -
+    // these send transient look packets only, so a moving/lookAtPlayers NPC isn't disturbed afterward.
+    private static final Map<Emote, List<EmoteStep>> EMOTE_STEPS = Map.of(
+            Emote.NOD, List.of(
+                    new EmoteStep(0, 15, 0, false),
+                    new EmoteStep(0, -15, 3, false),
+                    new EmoteStep(0, 10, 3, false),
+                    new EmoteStep(0, -10, 3, false),
+                    new EmoteStep(0, 0, 3, false)),
+            Emote.SHAKE_HEAD, List.of(
+                    new EmoteStep(20, 0, 0, false),
+                    new EmoteStep(-20, 0, 3, false),
+                    new EmoteStep(15, 0, 3, false),
+                    new EmoteStep(-15, 0, 3, false),
+                    new EmoteStep(0, 0, 3, false)),
+            Emote.WAVE, List.of(
+                    new EmoteStep(10, 0, 0, true),
+                    new EmoteStep(-10, 0, 6, true),
+                    new EmoteStep(10, 0, 6, true),
+                    new EmoteStep(0, 0, 6, false)),
+            Emote.DANCE, List.of(
+                    new EmoteStep(45, 0, 0, false),
+                    new EmoteStep(90, 0, 2, false),
+                    new EmoteStep(135, 0, 2, false),
+                    new EmoteStep(180, 0, 2, false),
+                    new EmoteStep(225, 0, 2, false),
+                    new EmoteStep(270, 0, 2, false),
+                    new EmoteStep(315, 0, 2, false),
+                    new EmoteStep(360, 0, 2, false)));
+
+    public void playEmote(NpcImpl npc, Emote emote) {
+        List<EmoteStep> steps = EMOTE_STEPS.get(emote);
+        if (steps == null) {
+            return;
+        }
+        Position base = npc.position();
+        float baseYaw = base.yaw();
+        float basePitch = base.pitch();
+        int entityId = npc.entityId();
+        long cumulative = 0;
+        for (int i = 0; i < steps.size(); i++) {
+            EmoteStep step = steps.get(i);
+            cumulative += step.delayTicks();
+            long atTick = cumulative;
+            float yaw = LookAt.normalizeYaw(baseYaw + step.yawOffset());
+            float pitch = clampPitch(basePitch + step.pitchOffset());
+            boolean lastStep = i == steps.size() - 1;
+            boolean swingNow = step.swing();
+            for (UUID viewerId : npc.viewers()) {
+                PlayerTracker.Tracked t = tracker.get(viewerId);
+                if (t == null) {
+                    continue;
+                }
+                Player viewer = t.player();
+                Schedulers.onEntityLater(plugin, viewer, () -> {
+                    backend.look(viewer, entityId, yaw, pitch);
+                    if (swingNow) {
+                        backend.animate(viewer, entityId, 0);
+                    }
+                    if (lastStep) {
+                        npc.forgetLook(viewerId);
+                    }
+                }, atTick);
+            }
+        }
+    }
+
+    private static float clampPitch(float pitch) {
+        if (pitch > 90f) return 90f;
+        if (pitch < -90f) return -90f;
+        return pitch;
     }
 
     public void reposition(NpcImpl npc) {
@@ -302,10 +381,20 @@ public final class NpcManager {
         double eyeY = pos.y() + Position.EYE_HEIGHT;
         NpcSnapshot snapshot = null;
         shouldSee.clear();
+        boolean trackProximity = npc.hasProximityListeners();
+        if (trackProximity) {
+            nearNow.clear();
+        }
 
         for (PlayerTracker.Tracked t : tracker.all()) {
             if (!t.world().equals(pos.world())) {
                 continue;
+            }
+            if (trackProximity) {
+                double proxRadius = npc.proximityRadius();
+                if (pos.distanceSquared(t.x(), t.y(), t.z()) <= proxRadius * proxRadius) {
+                    nearNow.add(t.uuid());
+                }
             }
             boolean inRange = pos.distanceSquared(t.x(), t.y(), t.z()) <= maxDistSq;
             if (!npc.visibleTo(t.uuid(), inRange)) {
@@ -344,6 +433,24 @@ public final class NpcManager {
                 }
             }
         }
+
+        if (trackProximity) {
+            npc.syncProximity(nearNow,
+                    playerId -> firePresence(npc, playerId, npc.nearCallback()),
+                    playerId -> firePresence(npc, playerId, npc.leaveCallback()));
+        }
+    }
+
+    private void firePresence(NpcImpl npc, UUID playerId, java.util.function.BiConsumer<net.folianpc.api.Npc, Player> callback) {
+        if (callback == null) {
+            return;
+        }
+        PlayerTracker.Tracked t = tracker.get(playerId);
+        if (t == null) {
+            return;
+        }
+        Player viewer = t.player();
+        Schedulers.onEntity(plugin, viewer, () -> guard(npc, () -> callback.accept(npc, viewer)));
     }
 
     // Generous over vanilla's ~6-block reach - not exact enforcement, just rejecting an obviously forged click.

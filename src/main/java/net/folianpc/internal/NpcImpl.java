@@ -1,6 +1,7 @@
 package net.folianpc.internal;
 
 import net.folianpc.api.ClickType;
+import net.folianpc.api.Emote;
 import net.folianpc.api.Npc;
 import net.folianpc.api.NpcAction;
 import net.folianpc.api.NpcClickListener;
@@ -10,6 +11,7 @@ import net.folianpc.api.MetadataType;
 import net.folianpc.api.MobVariant;
 import net.folianpc.api.NpcPose;
 import net.folianpc.api.Skin;
+import org.bukkit.entity.Player;
 import net.folianpc.internal.geometry.LookAt;
 import net.folianpc.internal.protocol.HologramLine;
 import net.folianpc.internal.protocol.NpcSnapshot;
@@ -30,6 +32,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public final class NpcImpl implements Npc {
 
@@ -87,6 +91,11 @@ public final class NpcImpl implements Npc {
     private int nametagRefreshCountdown;
 
     private volatile double viewDistance;
+
+    private volatile double proximityRadius;
+    private volatile BiConsumer<Npc, Player> nearCallback;
+    private volatile BiConsumer<Npc, Player> leaveCallback;
+    private final Set<UUID> nearby = ConcurrentHashMap.newKeySet();
 
     NpcImpl(UUID uuid, int entityId, String name, EntityType type, Position position, NpcManager manager) {
         this.uuid = uuid;
@@ -525,6 +534,58 @@ public final class NpcImpl implements Npc {
     }
 
     @Override
+    public Npc playEmote(Emote emote) {
+        if (!removed && emote != null) {
+            manager.playEmote(this, emote);
+        }
+        return this;
+    }
+
+    @Override
+    public Npc onPlayerNear(double radius, BiConsumer<Npc, Player> callback) {
+        this.proximityRadius = Math.max(0.0, radius);
+        this.nearCallback = callback;
+        return this;
+    }
+
+    @Override
+    public Npc onPlayerLeave(BiConsumer<Npc, Player> callback) {
+        this.leaveCallback = callback;
+        return this;
+    }
+
+    boolean hasProximityListeners() {
+        return proximityRadius > 0 && (nearCallback != null || leaveCallback != null);
+    }
+
+    double proximityRadius() {
+        return proximityRadius;
+    }
+
+    BiConsumer<Npc, Player> nearCallback() {
+        return nearCallback;
+    }
+
+    BiConsumer<Npc, Player> leaveCallback() {
+        return leaveCallback;
+    }
+
+    void syncProximity(Set<UUID> nowNear, Consumer<UUID> onEnter, Consumer<UUID> onLeave) {
+        for (UUID id : nowNear) {
+            if (nearby.add(id)) {
+                onEnter.accept(id);
+            }
+        }
+        nearby.removeIf(id -> {
+            if (!nowNear.contains(id)) {
+                onLeave.accept(id);
+                return true;
+            }
+            return false;
+        });
+    }
+
+    @Override
     public Npc refreshNametag() {
         if (!removed) {
             manager.updateNametag(this);
@@ -640,6 +701,7 @@ public final class NpcImpl implements Npc {
         viewers.remove(playerId);
         lastInteract.remove(playerId);
         lastLook.remove(playerId);
+        nearby.remove(playerId);
     }
 
     void dropVisibility(UUID playerId) {
@@ -764,6 +826,9 @@ public final class NpcImpl implements Npc {
         clone.cooldownMillis = cooldownMillis;
         clone.viewDistance = viewDistance;
         clone.showInTabList = showInTabList;
+        clone.proximityRadius = proximityRadius;
+        clone.nearCallback = nearCallback;
+        clone.leaveCallback = leaveCallback;
         equipment.forEach(clone::equipment);
         actions.forEach((clickType, entries) ->
                 entries.forEach(entry -> clone.addAction(clickType, entry.action(), entry.delayTicks())));

@@ -98,6 +98,12 @@ public interface Npc {
 
     Npc swingOffHand();
 
+    Npc playEmote(Emote emote);
+
+    Npc onPlayerNear(double radius, java.util.function.BiConsumer<Npc, org.bukkit.entity.Player> callback);
+
+    Npc onPlayerLeave(java.util.function.BiConsumer<Npc, org.bukkit.entity.Player> callback);
+
     Npc refreshNametag();
 
     Npc autoRefreshNametag(long everyTicks);
