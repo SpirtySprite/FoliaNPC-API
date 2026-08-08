@@ -84,7 +84,7 @@ happens on a server you believe meets the requirement.
 	<dependency>
 	    <groupId>com.github.SpirtySprite</groupId>
 	    <artifactId>FoliaNPC-API</artifactId>
-	    <version>1.0.0</version>
+	    <version>1.0.3</version>
 	</dependency>
 ```
 
