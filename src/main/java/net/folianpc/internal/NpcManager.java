@@ -311,15 +311,16 @@ public final class NpcManager {
                 continue;
             }
             Player viewer = t.player();
-            Schedulers.onEntity(plugin, viewer, () -> {
-                backend.move(viewer, entityId, delta[0], delta[1], delta[2]);
-                for (int lineId : lines) {
-                    backend.move(viewer, lineId, delta[0], delta[1], delta[2]);
-                }
-                if (npc.lookChanged(viewerId, yaw, pitch)) {
-                    backend.look(viewer, entityId, yaw, pitch);
-                }
-            });
+            if (!deliverable(viewer)) {
+                continue;
+            }
+            backend.move(viewer, entityId, delta[0], delta[1], delta[2]);
+            for (int lineId : lines) {
+                backend.move(viewer, lineId, delta[0], delta[1], delta[2]);
+            }
+            if (npc.lookChanged(viewerId, yaw, pitch)) {
+                backend.look(viewer, entityId, yaw, pitch);
+            }
         }
     }
 
@@ -402,23 +403,32 @@ public final class NpcManager {
             }
             shouldSee.add(t.uuid());
             Player viewer = t.player();
+            boolean shown = npc.viewers().add(t.uuid());
 
-            if (npc.viewers().add(t.uuid())) {
-                if (snapshot == null) {
-                    snapshot = npc.snapshot();
-                }
-                NpcSnapshot spawn = snapshot;
-                Schedulers.onEntity(plugin, viewer, () -> backend.show(viewer, spawn));
-                log("shown '" + npc.name() + "' (id=" + npc.entityId() + ") to " + viewer.getName());
-            }
-
+            LookAt.Rotation look = null;
             if (npc.lookAtPlayers() && !npc.moving()) {
                 LookAt.Rotation r = LookAt.face(pos.x(), eyeY, pos.z(),
                         t.x(), t.y() + Position.EYE_HEIGHT, t.z());
                 if (npc.lookChanged(t.uuid(), r.yaw(), r.pitch())) {
-                    int entityId = npc.entityId();
-                    Schedulers.onEntity(plugin, viewer, () -> backend.look(viewer, entityId, r.yaw(), r.pitch()));
+                    look = r;
                 }
+            }
+            int entityId = npc.entityId();
+            if (shown) {
+                if (snapshot == null) {
+                    snapshot = npc.snapshot();
+                }
+                NpcSnapshot spawn = snapshot;
+                LookAt.Rotation facing = look;
+                Schedulers.onEntity(plugin, viewer, () -> {
+                    backend.show(viewer, spawn);
+                    if (facing != null) {
+                        backend.look(viewer, entityId, facing.yaw(), facing.pitch());
+                    }
+                });
+                log("shown '" + npc.name() + "' (id=" + npc.entityId() + ") to " + viewer.getName());
+            } else if (look != null && deliverable(viewer)) {
+                backend.look(viewer, entityId, look.yaw(), look.pitch());
             }
         }
 
@@ -439,6 +449,11 @@ public final class NpcManager {
                     playerId -> firePresence(npc, playerId, npc.nearCallback()),
                     playerId -> firePresence(npc, playerId, npc.leaveCallback()));
         }
+    }
+
+    private boolean deliverable(Player viewer) {
+        return Schedulers.synchronousForTesting()
+                || plugin != null && plugin.isEnabled() && viewer.isOnline();
     }
 
     private void firePresence(NpcImpl npc, UUID playerId, java.util.function.BiConsumer<net.folianpc.api.Npc, Player> callback) {

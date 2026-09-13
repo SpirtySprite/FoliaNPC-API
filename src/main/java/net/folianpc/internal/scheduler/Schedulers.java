@@ -15,6 +15,10 @@ public final class Schedulers {
         synchronousForTesting = value;
     }
 
+    public static boolean synchronousForTesting() {
+        return synchronousForTesting;
+    }
+
     public interface Handle {
         void cancel();
     }
