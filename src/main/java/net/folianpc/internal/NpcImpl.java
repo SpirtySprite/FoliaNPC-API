@@ -9,6 +9,7 @@ import net.folianpc.api.NpcAppearance;
 import net.folianpc.api.NpcData;
 import net.folianpc.api.MetadataType;
 import net.folianpc.api.MobVariant;
+import net.folianpc.api.NametagStyle;
 import net.folianpc.api.NpcPose;
 import net.folianpc.api.Skin;
 import org.bukkit.entity.Player;
@@ -74,6 +75,7 @@ public final class NpcImpl implements Npc {
     private volatile List<String> nametag = List.of();
     private volatile int[] nametagIds = new int[0];
     private volatile boolean nametagVisible = true;
+    private volatile NametagStyle nametagStyle = NametagStyle.defaults();
     private volatile boolean glowing;
     private volatile boolean invisible;
     private volatile boolean skinLayers = true;
@@ -365,6 +367,24 @@ public final class NpcImpl implements Npc {
     @Override
     public boolean nametagVisible() {
         return nametagVisible;
+    }
+
+    @Override
+    public Npc nametagStyle(NametagStyle style) {
+        NametagStyle next = style == null ? NametagStyle.defaults() : style;
+        if (next.equals(nametagStyle)) {
+            return this;
+        }
+        this.nametagStyle = next;
+        if (!removed && !nametag.isEmpty()) {
+            manager.updateNametag(this);
+        }
+        return this;
+    }
+
+    @Override
+    public NametagStyle nametagStyle() {
+        return nametagStyle;
     }
 
     @Override
@@ -801,7 +821,7 @@ public final class NpcImpl implements Npc {
         return new NpcData(uuid, name, type, position.world(),
                 position.x(), position.y(), position.z(), position.yaw(), position.pitch(),
                 lookAtPlayers, skin, mirrorSkin, Map.copyOf(equipment), nametag, appearance(), pose,
-                baby, showInTabList, mobVariant, owner);
+                baby, showInTabList, mobVariant, owner, nametagStyle);
     }
 
     @Override
@@ -826,6 +846,7 @@ public final class NpcImpl implements Npc {
         clone.cooldownMillis = cooldownMillis;
         clone.viewDistance = viewDistance;
         clone.showInTabList = showInTabList;
+        clone.nametagStyle = nametagStyle;
         clone.proximityRadius = proximityRadius;
         clone.nearCallback = nearCallback;
         clone.leaveCallback = leaveCallback;
@@ -845,13 +866,14 @@ public final class NpcImpl implements Npc {
     private List<HologramLine> hologram() {
         List<String> lines = nametag;
         int[] ids = nametagIds;
+        NametagStyle style = nametagStyle;
         if (lines.isEmpty() || ids.length != lines.size()) {
             return List.of();
         }
         List<HologramLine> out = new ArrayList<>(lines.size());
         for (int i = 0; i < lines.size(); i++) {
             double y = position.y() + HOLOGRAM_BASE + (lines.size() - 1 - i) * HOLOGRAM_SPACING;
-            out.add(new HologramLine(ids[i], lines.get(i), position.x(), y, position.z()));
+            out.add(new HologramLine(ids[i], lines.get(i), position.x(), y, position.z(), style));
         }
         return out;
     }

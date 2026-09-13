@@ -1,5 +1,6 @@
 package net.folianpc.internal.protocol.nms;
 
+import net.folianpc.api.NametagStyle;
 import net.folianpc.api.Text;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -12,6 +13,9 @@ import java.util.List;
 final class Displays {
 
     private static final byte BILLBOARD_CENTER = 3;
+    private static final byte FLAG_SHADOW = 0x01;
+    private static final byte FLAG_SEE_THROUGH = 0x02;
+    private static final int FIRST_RENDERED_OPACITY = 4;
     private static final LegacyComponentSerializer SECTION = LegacyComponentSerializer.builder()
             .character('§')
             .hexColors()
@@ -24,6 +28,9 @@ final class Displays {
     private final Object componentSerializer;
     private final int textIndex;
     private final int billboardIndex;
+    private final int backgroundIndex;
+    private final int opacityIndex;
+    private final int styleFlagsIndex;
 
     Displays(Metadata metadata) {
         this.metadata = metadata;
@@ -35,17 +42,46 @@ final class Displays {
         this.componentSerializer = Reflect.staticField(serializers, "COMPONENT");
         this.literal = Reflect.method(componentClass, "literal", String.class);
         this.textIndex = Metadata.indexOf(Reflect.staticField(textDisplay, "DATA_TEXT_ID"));
-        this.billboardIndex = billboardIndex(display);
+        this.billboardIndex = optionalIndex(display, "DATA_BILLBOARD_RENDER_CONSTRAINTS_ID");
+        this.backgroundIndex = metadata.intSerializer == null ? -1
+                : optionalIndex(textDisplay, "DATA_BACKGROUND_COLOR_ID");
+        this.opacityIndex = optionalIndex(textDisplay, "DATA_TEXT_OPACITY_ID");
+        this.styleFlagsIndex = optionalIndex(textDisplay, "DATA_STYLE_FLAGS_ID");
         this.paperToVanilla = paperBridge();
     }
 
-    Object textPacket(int entityId, String text) {
-        List<Object> values = new ArrayList<>(2);
+    Object textPacket(int entityId, String text, NametagStyle style) {
+        NametagStyle applied = style == null ? NametagStyle.defaults() : style;
+        List<Object> values = new ArrayList<>(5);
         values.add(metadata.value(textIndex, componentSerializer, toVanilla(Text.parse(text))));
         if (billboardIndex >= 0) {
             values.add(metadata.value(billboardIndex, metadata.byteSerializer, BILLBOARD_CENTER));
         }
+        if (backgroundIndex >= 0) {
+            values.add(metadata.value(backgroundIndex, metadata.intSerializer, applied.background()));
+        }
+        if (opacityIndex >= 0) {
+            values.add(metadata.value(opacityIndex, metadata.byteSerializer, opacityByte(applied.textOpacity())));
+        }
+        if (styleFlagsIndex >= 0) {
+            values.add(metadata.value(styleFlagsIndex, metadata.byteSerializer, styleFlags(applied)));
+        }
         return metadata.packet(entityId, values);
+    }
+
+    static byte opacityByte(int opacity) {
+        return (byte) Math.max(FIRST_RENDERED_OPACITY, Math.min(NametagStyle.OPAQUE, opacity));
+    }
+
+    static byte styleFlags(NametagStyle style) {
+        byte flags = 0;
+        if (style.shadow()) {
+            flags |= FLAG_SHADOW;
+        }
+        if (style.seeThrough()) {
+            flags |= FLAG_SEE_THROUGH;
+        }
+        return flags;
     }
 
     boolean richText() {
@@ -75,9 +111,9 @@ final class Displays {
         }
     }
 
-    private static int billboardIndex(Class<?> display) {
+    private static int optionalIndex(Class<?> owner, String field) {
         try {
-            return Metadata.indexOf(Reflect.staticField(display, "DATA_BILLBOARD_RENDER_CONSTRAINTS_ID"));
+            return Metadata.indexOf(Reflect.staticField(owner, field));
         } catch (RuntimeException e) {
             return -1;
         }

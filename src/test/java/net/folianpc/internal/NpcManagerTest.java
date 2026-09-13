@@ -5,6 +5,7 @@ import net.folianpc.api.Npc;
 import net.folianpc.api.NpcAction;
 import net.folianpc.api.NpcClickContext;
 import net.folianpc.api.NpcAppearance;
+import net.folianpc.api.NametagStyle;
 import net.folianpc.api.NpcData;
 import net.folianpc.api.NpcPose;
 import net.folianpc.api.event.NpcInteractEvent;
@@ -1397,5 +1398,90 @@ class NpcManagerTest {
         assertEquals(30f, data.yaw());
         assertTrue(data.lookAtPlayers());
         assertEquals("value", data.skin().value());
+    }
+
+    @Test
+    void changingTheNametagStyleOnlyResendsTheLines() {
+        NpcImpl npc = manager.create("Bob", new Position("world", 0, 64, 0, 0, 0));
+        npc.nametag(List.of("hello", "world"));
+        Player p = player(UUID.randomUUID());
+        track(p, "world", 0, 64, 5);
+        manager.tick();
+        int showsBefore = backend.shows.size();
+        int hidesBefore = backend.hides.size();
+        int refreshesBefore = backend.hologramRefreshes.size();
+
+        NametagStyle style = NametagStyle.transparent().withTextOpacity(128).withShadow(true);
+        npc.nametagStyle(style);
+
+        assertEquals(showsBefore, backend.shows.size(), "no respawn for a style change");
+        assertEquals(hidesBefore, backend.hides.size());
+        assertEquals(refreshesBefore + 1, backend.hologramRefreshes.size());
+        var lines = backend.hologramRefreshes.get(backend.hologramRefreshes.size() - 1).hologram();
+        assertEquals(style, lines.get(0).style());
+        assertEquals(style, lines.get(1).style());
+    }
+
+    @Test
+    void settingTheSameNametagStyleSendsNothing() {
+        NpcImpl npc = manager.create("Bob", new Position("world", 0, 64, 0, 0, 0));
+        npc.nametag(List.of("hello"));
+        Player p = player(UUID.randomUUID());
+        track(p, "world", 0, 64, 5);
+        manager.tick();
+        npc.nametagStyle(NametagStyle.transparent());
+        int refreshes = backend.hologramRefreshes.size();
+
+        npc.nametagStyle(NametagStyle.transparent());
+
+        assertEquals(refreshes, backend.hologramRefreshes.size());
+    }
+
+    @Test
+    void nametagStyleWithoutLinesIsStoredButNotSent() {
+        NpcImpl npc = manager.create("Bob", new Position("world", 0, 64, 0, 0, 0));
+        Player p = player(UUID.randomUUID());
+        track(p, "world", 0, 64, 5);
+        manager.tick();
+
+        npc.nametagStyle(NametagStyle.transparent());
+
+        assertTrue(backend.hologramRefreshes.isEmpty());
+        assertEquals(NametagStyle.transparent(), npc.nametagStyle());
+        npc.nametag(List.of("later"));
+        assertEquals(NametagStyle.transparent(), npc.snapshot().hologram().get(0).style());
+    }
+
+    @Test
+    void nullNametagStyleFallsBackToDefaults() {
+        NpcImpl npc = manager.create("Bob", new Position("world", 0, 64, 0, 0, 0));
+        npc.nametagStyle(NametagStyle.transparent());
+
+        npc.nametagStyle(null);
+
+        assertEquals(NametagStyle.defaults(), npc.nametagStyle());
+    }
+
+    @Test
+    void nametagStyleSurvivesCopyAndData() {
+        NpcImpl original = manager.create("Bob", new Position("world", 0, 64, 0, 0, 0));
+        NametagStyle style = NametagStyle.defaults().withBackground(0x220044, 90).withSeeThrough(true);
+        original.nametagStyle(style);
+        original.nametag(List.of("hi"));
+
+        Npc copy = original.copy(new org.bukkit.Location(null, 3, 64, 3));
+        NpcData saved = original.data();
+
+        assertEquals(style, copy.nametagStyle());
+        assertEquals(style, saved.nametagStyle());
+    }
+
+    @Test
+    void legacyDataConstructorUsesTheDefaultNametagStyle() {
+        NpcData legacy = new NpcData(UUID.randomUUID(), "Bob", EntityType.PLAYER, "world", 0, 64, 0, 0, 0,
+                false, null, false, java.util.Map.of(), List.of("hi"), NpcAppearance.defaults(), NpcPose.STANDING,
+                false, false, net.folianpc.api.MobVariant.defaults(), null);
+
+        assertEquals(NametagStyle.defaults(), legacy.nametagStyle());
     }
 }

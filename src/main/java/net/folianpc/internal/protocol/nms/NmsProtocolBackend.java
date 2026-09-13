@@ -226,7 +226,8 @@ public final class NmsProtocolBackend implements ProtocolBackend {
         for (HologramLine line : lines) {
             send(viewer, spawn(line.entityId(), UUID.randomUUID(), textDisplayType(),
                     line.x(), line.y(), line.z()));
-            send(viewer, displays.textPacket(line.entityId(), nametagResolver.apply(viewer, line.text())));
+            send(viewer, displays.textPacket(line.entityId(), nametagResolver.apply(viewer, line.text()),
+                    line.style()));
         }
     }
 
@@ -236,7 +237,8 @@ public final class NmsProtocolBackend implements ProtocolBackend {
             return;
         }
         for (HologramLine line : npc.hologram()) {
-            send(viewer, displays.textPacket(line.entityId(), nametagResolver.apply(viewer, line.text())));
+            send(viewer, displays.textPacket(line.entityId(), nametagResolver.apply(viewer, line.text()),
+                    line.style()));
         }
     }
 

@@ -84,7 +84,7 @@ happens on a server you believe meets the requirement.
 	<dependency>
 	    <groupId>com.github.SpirtySprite</groupId>
 	    <artifactId>FoliaNPC-API</artifactId>
-	    <version>1.0.3</version>
+	    <version>1.1.0</version>
 	</dependency>
 ```
 
@@ -419,6 +419,38 @@ flicker); `autoRefreshNametag(ticks)` does the same thing automatically on a rep
 value (an economy balance, a countdown, a player's current world) stays current without you having to
 remember to call `refreshNametag()` yourself. Passing `0` or less turns automatic refresh back off.
 
+### Background, transparency, shadow and see-through
+
+Every floating line is drawn with the vanilla text display background: black at 25% opacity. A
+`NametagStyle` changes that for all lines of an NPC at once:
+
+```java
+npc.nametagStyle(NametagStyle.transparent());
+
+npc.nametagStyle(NametagStyle.defaults()
+        .withBackground(0x1E1033, 160)
+        .withTextOpacity(200)
+        .withShadow(true)
+        .withSeeThrough(true));
+
+NpcBuilder builder = npcs.builder().nametagStyle(NametagStyle.transparent());
+```
+
+| Method | Default | Effect |
+|---|---|---|
+| `withBackground(argb)` | `0x40000000` | full ARGB background, `0` for none |
+| `withBackground(rgb, alpha)` | | same, with the alpha given separately and clamped to 0..255 |
+| `withTextOpacity(opacity)` | `255` | text alpha, clamped to 0..255 |
+| `withShadow(boolean)` | `false` | text shadow |
+| `withSeeThrough(boolean)` | `false` | lines stay visible through walls |
+
+Changing the style only re-sends the line metadata to current viewers: no respawn, no flicker, and
+setting the style an NPC already has sends nothing. The style is kept by `copy(...)` and by `NpcData`,
+and it applies to lines added later too. The client discards text whose alpha is below about 26, so any
+text opacity in that range renders as fully hidden rather than faint. The style fields are optional
+on the protocol side, like the rest of the nametag support: a server build missing them still shows the
+text with vanilla styling.
+
 ## Appearance
 
 ```java
@@ -685,7 +717,7 @@ npcs.spawnAll(saved);                   // typically on startup; or npcs.spawn(d
 
 `NpcData` is a plain record of primitive/simple values (id, name, type, world/x/y/z/yaw/pitch, skin,
 mirror-skin flag, equipment map, nametag lines, appearance, pose, baby flag, tab-list flag, mob
-variant, owner), so it serializes cleanly with whatever you already use — Gson, Jackson, a config
+variant, owner, nametag style), so it serializes cleanly with whatever you already use: Gson, Jackson, a config
 library, a database row mapper, anything that can handle a POJO/record. Re-spawning from a saved
 `NpcData` **keeps the original id**, so anything you have keyed on `npc.id()` elsewhere in your own
 data still matches up correctly after a server restart.
