@@ -40,6 +40,10 @@ public interface Npc {
 
     boolean nametagVisible();
 
+    Npc nametagStyle(NametagStyle style);
+
+    NametagStyle nametagStyle();
+
     Npc glowing(boolean value);
 
     boolean glowing();

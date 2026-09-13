@@ -24,6 +24,7 @@ public final class NpcBuilder {
             new java.util.EnumMap<>(org.bukkit.inventory.EquipmentSlot.class);
     final java.util.List<java.util.Map.Entry<ClickType, NpcAction>> actions = new java.util.ArrayList<>();
     java.util.List<String> nametag = java.util.List.of();
+    NametagStyle nametagStyle = NametagStyle.defaults();
     long cooldown;
     double viewDistance;
     NpcAppearance appearance = NpcAppearance.defaults();
@@ -130,6 +131,11 @@ public final class NpcBuilder {
     public NpcBuilder collidable(boolean value) {
         return appearance(with(a -> new NpcAppearance(a.glowing(), a.invisible(), a.skinLayers(), a.scale(),
                 a.glowColor(), value, a.nametagVisible())));
+    }
+
+    public NpcBuilder nametagStyle(NametagStyle style) {
+        this.nametagStyle = style == null ? NametagStyle.defaults() : style;
+        return this;
     }
 
     public NpcBuilder appearance(NpcAppearance appearance) {

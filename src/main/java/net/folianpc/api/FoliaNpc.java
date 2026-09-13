@@ -128,6 +128,7 @@ public final class FoliaNpc {
         npc.pose(b.pose);
         npc.baby(b.baby);
         npc.mobVariant(b.mobVariant);
+        npc.nametagStyle(b.nametagStyle);
         if (!b.nametag.isEmpty()) {
             npc.nametag(b.nametag);
         }
@@ -172,6 +173,7 @@ public final class FoliaNpc {
         if (data.equipment() != null) {
             data.equipment().forEach(npc::equipment);
         }
+        npc.nametagStyle(data.nametagStyle());
         if (data.nametag() != null && !data.nametag().isEmpty()) {
             npc.nametag(data.nametag());
         }
