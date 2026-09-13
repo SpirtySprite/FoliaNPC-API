@@ -19,4 +19,14 @@ final class Nms {
     static byte angle(float degrees) {
         return net.folianpc.internal.geometry.LookAt.angleByte(degrees);
     }
+
+    static Object[] addEntityArguments(boolean byteAngles, int entityId, java.util.UUID uuid,
+                                       double x, double y, double z, float pitch, float yaw,
+                                       Object type, Object movement) {
+        if (byteAngles) {
+            byte headYaw = angle(yaw);
+            return new Object[]{entityId, uuid, x, y, z, angle(pitch), headYaw, type, 0, movement, headYaw};
+        }
+        return new Object[]{entityId, uuid, x, y, z, pitch, yaw, type, 0, movement, (double) yaw};
+    }
 }
