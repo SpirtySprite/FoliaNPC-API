@@ -334,21 +334,17 @@ public final class NmsProtocolBackend implements ProtocolBackend {
 
     private Object addEntity(NpcSnapshot npc) {
         return spawn(npc.entityId(), npc.uuid(), type(npc.type()), npc.x(), npc.y(), npc.z(),
-                Nms.angle(npc.pitch()), Nms.angle(npc.yaw()));
+                npc.pitch(), npc.yaw());
     }
 
     private Object spawn(int entityId, UUID uuid, Object type, double x, double y, double z) {
-        return spawn(entityId, uuid, type, x, y, z, (byte) 0, (byte) 0);
+        return spawn(entityId, uuid, type, x, y, z, 0.0f, 0.0f);
     }
 
     private Object spawn(int entityId, UUID uuid, Object type,
-                         double x, double y, double z, byte pitch, byte yaw) {
-        if (byteAngles) {
-            return Reflect.newInstance(addEntityCtor, entityId, uuid, x, y, z,
-                    pitch, yaw, type, 0, vec3Zero, yaw);
-        }
-        return Reflect.newInstance(addEntityCtor, entityId, uuid, x, y, z,
-                (float) pitch, (float) yaw, type, 0, vec3Zero, (double) yaw);
+                         double x, double y, double z, float pitch, float yaw) {
+        return Reflect.newInstance(addEntityCtor,
+                Nms.addEntityArguments(byteAngles, entityId, uuid, x, y, z, pitch, yaw, type, vec3Zero));
     }
 
     private Object rotateHead(int entityId, byte yaw) {

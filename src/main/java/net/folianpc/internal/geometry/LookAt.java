@@ -5,7 +5,7 @@ public final class LookAt {
 
     // Degrees to the byte the protocol actually carries; also what change detection compares against.
     public static byte angleByte(float degrees) {
-        return (byte) (int) (degrees * 256.0f / 360.0f);
+        return (byte) (int) Math.floor(degrees * 256.0f / 360.0f);
     }
 
     public record Rotation(float yaw, float pitch) {
