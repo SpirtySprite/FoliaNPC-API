@@ -2,8 +2,6 @@ package net.folianpc.internal.protocol.nms;
 
 import org.bukkit.Bukkit;
 
-// Version gate. Everything below is built for Mojang-mapped 1.20.6+, so refusing to start is kinder
-// than half-working NPCs on an older server.
 public final class ServerVersion {
 
     private static final boolean CALENDAR;

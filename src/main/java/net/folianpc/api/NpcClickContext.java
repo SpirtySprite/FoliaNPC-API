@@ -27,9 +27,7 @@ public interface NpcClickContext {
 
     void runLater(Runnable task, long delayTicks);
 
-    // Console commands and world edits belong here.
     void runGlobal(Runnable task);
 
-    // Do not touch Bukkit objects inside this.
     void runAsync(Runnable task);
 }

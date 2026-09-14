@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-// Test double: records every backend call so tests can assert on what the manager decided to send.
 final class RecordingProtocolBackend implements ProtocolBackend {
 
     record Show(Player viewer, NpcSnapshot npc) {

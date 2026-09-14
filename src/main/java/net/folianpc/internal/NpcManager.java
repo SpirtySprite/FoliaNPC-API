@@ -173,8 +173,6 @@ public final class NpcManager {
     private record EmoteStep(float yawOffset, float pitchOffset, long delayTicks, boolean swing) {
     }
 
-    // Relative to the NPC's current heading at the moment playEmote() is called, not its live position -
-    // these send transient look packets only, so a moving/lookAtPlayers NPC isn't disturbed afterward.
     private static final Map<Emote, List<EmoteStep>> EMOTE_STEPS = Map.of(
             Emote.NOD, List.of(
                     new EmoteStep(0, 15, 0, false),
@@ -277,7 +275,6 @@ public final class NpcManager {
         }
     }
 
-    // Global region thread can't read blocks on Folia; scheduling on the NPC's own location keeps it legal.
     public CompletableFuture<Boolean> navigate(NpcImpl npc, Location target, double blocksPerSecond) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         World world = target.getWorld();
@@ -468,7 +465,6 @@ public final class NpcManager {
         Schedulers.onEntity(plugin, viewer, () -> guard(npc, () -> callback.accept(npc, viewer)));
     }
 
-    // Generous over vanilla's ~6-block reach - not exact enforcement, just rejecting an obviously forged click.
     private static final double MAX_INTERACT_DISTANCE_SQUARED = 10.0 * 10.0;
 
     private boolean handleInteract(org.bukkit.entity.Player viewer, int entityId,

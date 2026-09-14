@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 
-// Pure logic - takes a WorldSampler so it unit-tests against a fake grid instead of a live world.
 public final class AStar {
 
     public interface WorldSampler {

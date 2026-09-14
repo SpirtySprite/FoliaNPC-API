@@ -66,22 +66,18 @@ public interface Npc {
 
     NpcPose pose();
 
-    // No-op on entity types that don't support it.
     Npc baby(boolean value);
 
     boolean baby();
 
-    // Raw variant ordinal for rabbit/parrot/axolotl/mooshroom/horse; no-op on other types.
     Npc variant(int value);
 
     int variant();
 
-    // Named registry variant (e.g. "black", "ashen") for cat/wolf/frog; no-op on other types.
     Npc variant(String name);
 
     String variantName();
 
-    // Villager only. "none" clears; other values are profession/type registry names (e.g. "farmer", "plains").
     Npc villagerProfession(String profession);
 
     String villagerProfession();
@@ -112,7 +108,6 @@ public interface Npc {
 
     Npc autoRefreshNametag(long everyTicks);
 
-    // Forces the unique wire name (see NpcImpl.profileName).
     Npc glowColor(net.kyori.adventure.text.format.NamedTextColor color);
 
     net.kyori.adventure.text.format.NamedTextColor glowColor();
@@ -125,7 +120,6 @@ public interface Npc {
 
     boolean showInTabList();
 
-    // Runtime-only, not saved in NpcData.
     Npc showTo(UUID playerId);
 
     Npc hideFrom(UUID playerId);
@@ -180,11 +174,8 @@ public interface Npc {
 
     Npc teleport(org.bukkit.Location target);
 
-    // Straight line, no pathfinding - see navigateTo for that.
     Npc walkTo(org.bukkit.Location target, double blocksPerSecond);
 
-    // Routes around obstacles instead of walking a straight line; false means no route was found or
-    // target is in a different world. stopWalking() cancels mid-route.
     java.util.concurrent.CompletableFuture<Boolean> navigateTo(org.bukkit.Location target, double blocksPerSecond);
 
     Npc stopWalking();

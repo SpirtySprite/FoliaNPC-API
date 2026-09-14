@@ -41,8 +41,6 @@ public final class Actions {
         return ctx -> ctx.player().playSound(ctx.player().getLocation(), sound, volume, pitch);
     }
 
-    // Requires your plugin to register the "BungeeCord" outgoing channel first - FoliaNPC never
-    // registers anything on your behalf.
     public static NpcAction connectToServer(String serverName) {
         return ctx -> {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();

@@ -17,7 +17,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-// Parsing lives in small static methods so it unit-tests without any network.
 public final class MojangSkinService {
 
     private static final String NAME_TO_ID = "https://api.mojang.com/users/profiles/minecraft/";
@@ -47,30 +46,43 @@ public final class MojangSkinService {
                 key -> get(ID_TO_PROFILE + undash(key) + "?unsigned=false").thenApply(MojangSkinService::parseSkin));
     }
 
-    // A failure is never kept: caching a failed future would mean one network blip breaks that skin
-    // until the server restarts.
     <K> CompletableFuture<Skin> lookup(ConcurrentHashMap<K, Cached> cache, K key,
                                        Function<K, CompletableFuture<Skin>> fetch) {
         long now = System.currentTimeMillis();
-        Cached existing = cache.get(key);
-        if (existing != null && existing.expiresAt() > now && !existing.skin().isCompletedExceptionally()) {
-            return existing.skin();
-        }
-        CompletableFuture<Skin> skin = fetch.apply(key);
-        cache.put(key, new Cached(skin, now + ttlMillis));
-        skin.whenComplete((result, error) -> {
-            if (error != null) {
-                cache.remove(key);
+        boolean[] fresh = new boolean[1];
+        Cached entry = cache.compute(key, (ignored, existing) -> {
+            if (existing != null && existing.expiresAt() > now && !existing.skin().isCompletedExceptionally()) {
+                return existing;
             }
+            fresh[0] = true;
+            return new Cached(new CompletableFuture<>(), now + ttlMillis);
         });
-        return skin;
+        if (fresh[0]) {
+            CompletableFuture<Skin> pending = entry.skin();
+            CompletableFuture<Skin> fetched;
+            try {
+                fetched = fetch.apply(key);
+            } catch (RuntimeException failure) {
+                fetched = CompletableFuture.failedFuture(failure);
+            }
+            fetched.whenComplete((result, error) -> {
+                if (error != null) {
+                    cache.remove(key, entry);
+                    pending.completeExceptionally(error);
+                } else {
+                    pending.complete(result);
+                }
+            });
+        }
+        return entry.skin();
     }
 
     private static final String MINESKIN = "https://api.mineskin.org/generate/url";
 
-    // Not cached: Mineskin is heavily rate-limited.
     public CompletableFuture<Skin> byUrl(String imageUrl) {
-        String body = "{\"url\":\"" + imageUrl.replace("\"", "\\\"") + "\"}";
+        JsonObject payload = new JsonObject();
+        payload.addProperty("url", imageUrl);
+        String body = payload.toString();
         HttpRequest request = HttpRequest.newBuilder(URI.create(MINESKIN))
                 .timeout(TIMEOUT)
                 .header("Content-Type", "application/json")

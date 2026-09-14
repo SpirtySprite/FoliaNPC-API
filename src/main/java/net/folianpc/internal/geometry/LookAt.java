@@ -1,9 +1,7 @@
 package net.folianpc.internal.geometry;
 
-// Yaw/pitch needed for an NPC at `from` to face `to`. Pure math, no Bukkit — unit tested.
 public final class LookAt {
 
-    // Degrees to the byte the protocol actually carries; also what change detection compares against.
     public static byte angleByte(float degrees) {
         return (byte) (int) Math.floor(degrees * 256.0f / 360.0f);
     }
@@ -26,7 +24,6 @@ public final class LookAt {
         return new Rotation(yaw, clampPitch(pitch));
     }
 
-    // Minecraft yaw wraps to [-180, 180).
     public static float normalizeYaw(float yaw) {
         float y = yaw % 360f;
         if (y >= 180f) y -= 360f;

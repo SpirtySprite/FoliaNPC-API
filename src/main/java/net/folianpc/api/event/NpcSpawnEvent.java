@@ -4,7 +4,6 @@ import net.folianpc.api.Npc;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-// Fires for every registered NPC, including ones another plugin created.
 public class NpcSpawnEvent extends Event {
 
     private static final HandlerList HANDLERS = new HandlerList();

@@ -2,7 +2,6 @@ package net.folianpc.api;
 
 import org.bukkit.Location;
 
-// Only location() is required; everything else mirrors a setter on the live Npc.
 public final class NpcBuilder {
 
     private final FoliaNpc api;
@@ -97,7 +96,6 @@ public final class NpcBuilder {
         return this;
     }
 
-    // Defaults to PLAYER.
     public NpcBuilder type(org.bukkit.entity.EntityType type) {
         this.type = type != null ? type : org.bukkit.entity.EntityType.PLAYER;
         return this;
@@ -148,13 +146,11 @@ public final class NpcBuilder {
         return this;
     }
 
-    // Only takes effect on mobs that support an adult/baby state.
     public NpcBuilder baby(boolean value) {
         this.baby = value;
         return this;
     }
 
-    // Player NPCs only. Off by default.
     public NpcBuilder showInTabList(boolean value) {
         this.showInTabList = value;
         return this;
