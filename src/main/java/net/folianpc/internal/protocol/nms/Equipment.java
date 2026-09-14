@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-// Worn and held items. Works for player and mob NPCs alike, and applies without a respawn.
 final class Equipment {
 
     private final Constructor<?> packetCtor;
@@ -26,7 +25,6 @@ final class Equipment {
         this.pairOf = Reflect.method(Reflect.tryClass("com.mojang.datafixers.util.Pair"),
                 "of", Object.class, Object.class);
 
-        // CraftBukkit's package is versioned on some builds and not others; derive it from the server.
         String craftBase = Bukkit.getServer().getClass().getPackage().getName();
         Class<?> craftItem = Reflect.tryClass(craftBase + ".inventory.CraftItemStack");
         if (craftItem == null) {
@@ -55,7 +53,7 @@ final class Equipment {
         try {
             return Reflect.enumConstant(slotClass, name);
         } catch (RuntimeException e) {
-            return null; // slot this version doesn't have, e.g. BODY on older builds
+            return null;
         }
     }
 }

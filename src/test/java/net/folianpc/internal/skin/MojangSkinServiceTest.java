@@ -92,6 +92,37 @@ class MojangSkinServiceTest {
     }
 
     @Test
+    void concurrentLookupsShareOneFetch() {
+        MojangSkinService service = new MojangSkinService();
+        var cache = new ConcurrentHashMap<String, MojangSkinService.Cached>();
+        AtomicInteger fetches = new AtomicInteger();
+        CompletableFuture<Skin> slow = new CompletableFuture<>();
+        CompletableFuture<Skin> first = service.lookup(cache, "steve", key -> {
+            fetches.incrementAndGet();
+            return slow;
+        });
+        CompletableFuture<Skin> second = service.lookup(cache, "steve", key -> {
+            fetches.incrementAndGet();
+            return CompletableFuture.completedFuture(Skin.of("other", null));
+        });
+        slow.complete(Skin.of("value", null));
+        assertEquals(1, fetches.get(), "a skin already on its way is not requested twice");
+        assertEquals("value", first.join().value());
+        assertEquals("value", second.join().value());
+    }
+
+    @Test
+    void aThrowingFetchIsReportedAndForgotten() {
+        MojangSkinService service = new MojangSkinService();
+        var cache = new ConcurrentHashMap<String, MojangSkinService.Cached>();
+        CompletableFuture<Skin> result = service.lookup(cache, "steve", key -> {
+            throw new IllegalStateException("broken");
+        });
+        assertTrue(result.isCompletedExceptionally());
+        assertTrue(cache.isEmpty());
+    }
+
+    @Test
     void parsesMineskinResponse() {
         String json = "{\"data\":{\"texture\":{\"value\":\"V\",\"signature\":\"S\"}}}";
         Skin skin = MojangSkinService.parseMineskin(json);

@@ -141,7 +141,7 @@ class NpcManagerTest {
         manager.tick();
         assertEquals(1, backend.shows.size());
 
-        track(p, "world", 0, 64, 500); // walked away
+        track(p, "world", 0, 64, 500);
         manager.tick();
 
         assertEquals(1, backend.hides.size());
@@ -153,14 +153,14 @@ class NpcManagerTest {
         NpcImpl npc = manager.create("Bob", new Position("world", 0, 64, 0, 0, 0));
         npc.lookAtPlayers(true);
         Player p = player(UUID.randomUUID());
-        track(p, "world", 0, 64, 10); // due south
+        track(p, "world", 0, 64, 10);
 
         manager.tick();
 
         assertFalse(backend.looks.isEmpty());
         RecordingProtocolBackend.Look look = backend.looks.get(backend.looks.size() - 1);
         assertEquals(npc.entityId(), look.entityId());
-        assertEquals(0f, look.yaw(), 0.01f); // facing +Z is yaw 0
+        assertEquals(0f, look.yaw(), 0.01f);
     }
 
     @Test
@@ -178,7 +178,7 @@ class NpcManagerTest {
 
         assertEquals(1, backend.looks.size(), "a still player must not cost packets every pass");
 
-        track(p, "world", 10, 64, 0); // walked around the NPC
+        track(p, "world", 10, 64, 0);
         manager.tick();
 
         assertEquals(2, backend.looks.size());
@@ -194,9 +194,9 @@ class NpcManagerTest {
         manager.tick();
         assertEquals(1, backend.looks.size());
 
-        track(p, "world", 0, 64, 900); // out of range, despawns
+        track(p, "world", 0, 64, 900);
         manager.tick();
-        track(p, "world", 0, 64, 10);  // back to the exact same rotation
+        track(p, "world", 0, 64, 10);
         manager.tick();
 
         assertEquals(2, backend.looks.size(), "the client reset on despawn, so it must be re-sent");
@@ -211,7 +211,7 @@ class NpcManagerTest {
         manager.tick();
         assertEquals(1, backend.shows.size());
 
-        manager.forgetPlayer(id); // what a respawn does: the client wiped its entities
+        manager.forgetPlayer(id);
         manager.tick();
 
         assertEquals(2, backend.shows.size(), "the NPC must be sent again after a respawn");
@@ -233,11 +233,11 @@ class NpcManagerTest {
         NpcImpl npc = manager.create("Bob", new Position("world", 0, 64, 0, 0, 0));
         npc.lookAtPlayers(true);
         Player p = player(UUID.randomUUID());
-        track(p, "world", -10, 64, 0); // player is due west; travel is due east (yaw 90)
+        track(p, "world", -10, 64, 0);
         manager.tick();
         backend.looks.clear();
 
-        npc.walkToward(10, 64, 0, 4.0); // walking due east
+        npc.walkToward(10, 64, 0, 4.0);
         manager.tick();
 
         assertFalse(backend.looks.isEmpty(), "a step must send a look packet");
@@ -250,8 +250,8 @@ class NpcManagerTest {
         NpcImpl npc = manager.create("Bob", new Position("world", 0, 64, 0, 0, 0));
         npc.lookAtPlayers(true);
         Player p = player(UUID.randomUUID());
-        track(p, "world", 0, 64, 10); // due south of the arrival point too
-        npc.walkToward(0.2, 64, 0, 4.0); // arrives within a single step, just barely off the z-axis
+        track(p, "world", 0, 64, 10);
+        npc.walkToward(0.2, 64, 0, 4.0);
         manager.tick();
 
         assertFalse(npc.moving(), "must have arrived");
@@ -353,7 +353,7 @@ class NpcManagerTest {
         track(p, "world", 0, 64, 5);
         manager.tick();
 
-        track(p, "world", 0, 64, 900); // walked away
+        track(p, "world", 0, 64, 900);
         manager.tick();
 
         assertEquals(1, backend.removed.size());
@@ -675,7 +675,7 @@ class NpcManagerTest {
         track(p, "world", 0, 64, 5);
         manager.tick();
 
-        npc.walkToward(10, 64, 0, 4.0); // 4 blocks/s -> 0.4 per pass
+        npc.walkToward(10, 64, 0, 4.0);
         manager.tick();
 
         assertTrue(npc.moving());
@@ -691,14 +691,13 @@ class NpcManagerTest {
         track(p, "world", 0, 64, 5);
         manager.tick();
 
-        npc.walkToward(0.2, 64, 0, 4.0); // within a single 0.4 step
+        npc.walkToward(0.2, 64, 0, 4.0);
         manager.tick();
 
         assertFalse(npc.moving(), "arrived, so no longer walking");
         assertEquals(0.2, npc.x(), 1e-6);
     }
 
-    // A flat world: solid floor at y<=0, open air above, so y=1 is standable everywhere.
     private World flatWorld(String name) {
         World world = mock(World.class);
         when(world.getName()).thenReturn(name);
@@ -713,7 +712,6 @@ class NpcManagerTest {
         return world;
     }
 
-    // Solid everywhere: no block is ever standable, so no route can exist.
     private World sealedWorld(String name) {
         World world = mock(World.class);
         when(world.getName()).thenReturn(name);
@@ -790,7 +788,7 @@ class NpcManagerTest {
         manager.tick();
         int before = backend.hologramRefreshes.size();
 
-        npc.autoRefreshNametag(4); // every 4 ticks -> every 2 passes
+        npc.autoRefreshNametag(4);
         manager.tick();
         assertEquals(before, backend.hologramRefreshes.size(), "not yet due");
         manager.tick();
@@ -861,7 +859,7 @@ class NpcManagerTest {
         NpcImpl npc = manager.create(UUID.randomUUID(), "Zed", EntityType.ZOMBIE,
                 new Position("world", 0, 64, 0, 0, 0));
 
-        npc.metadata(16, net.folianpc.api.MetadataType.BOOLEAN, true); // e.g. baby zombie
+        npc.metadata(16, net.folianpc.api.MetadataType.BOOLEAN, true);
 
         assertEquals(net.folianpc.api.MetadataType.BOOLEAN, npc.snapshot().rawMeta().get(16).type());
         assertEquals(true, npc.snapshot().rawMeta().get(16).value());
@@ -890,12 +888,12 @@ class NpcManagerTest {
         track(p, "world", 0, 64, 5);
         npc.hideFrom(id);
 
-        manager.forgetPlayer(id); // a respawn: override must remain
+        manager.forgetPlayer(id);
         track(p, "world", 0, 64, 5);
         manager.tick();
         assertTrue(backend.shows.isEmpty(), "respawn keeps a standing hide");
 
-        manager.dropPlayer(id);   // a quit: override is gone
+        manager.dropPlayer(id);
         manager.tick();
         assertEquals(1, backend.shows.size(), "quit clears the override");
     }
@@ -921,13 +919,13 @@ class NpcManagerTest {
         NpcImpl npc = manager.create("Bob", new Position("world", 0, 64, 0, 0, 0));
         npc.viewDistance(10);
         Player p = player(UUID.randomUUID());
-        track(p, "world", 0, 64, 20); // inside the global range, outside this NPC's
+        track(p, "world", 0, 64, 20);
 
         manager.tick();
 
         assertTrue(backend.shows.isEmpty());
 
-        npc.viewDistance(0); // back to inheriting
+        npc.viewDistance(0);
         manager.tick();
 
         assertEquals(1, backend.shows.size());
@@ -1087,8 +1085,6 @@ class NpcManagerTest {
         assertEquals(0, runs.get());
     }
 
-    // ItemStack can't be built or mocked without a running server (org.bukkit.Registry), so these
-    // cover the routing only; the item conversion itself lives in the NMS backend.
     @Test
     void equipmentChangePushesToViewersWithoutRespawning() {
         NpcImpl npc = manager.create("Bob", new Position("world", 0, 64, 0, 0, 0));
@@ -1373,7 +1369,7 @@ class NpcManagerTest {
     @Test
     void untrackedClicksStillRunSincePositionIsUnknownRatherThanWrong() {
         NpcImpl npc = manager.create("Bob", new Position("world", 0, 64, 0, 0, 0));
-        Player p = player(UUID.randomUUID()); // never tracked, e.g. the instant after join
+        Player p = player(UUID.randomUUID());
         AtomicInteger runs = new AtomicInteger();
         npc.addAction(ClickType.RIGHT, ctx -> runs.incrementAndGet());
 

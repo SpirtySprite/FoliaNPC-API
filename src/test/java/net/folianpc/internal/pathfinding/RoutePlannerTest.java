@@ -14,7 +14,6 @@ import static org.mockito.Mockito.when;
 
 class RoutePlannerTest {
 
-    // Floor at y<=0, open above, plus a single-block ridge at x=1 forcing a step-up from (0,1,0) to (3,1,0).
     private World worldWithARidgeAt(int ridgeX) {
         World world = mock(World.class);
         when(world.getMinHeight()).thenReturn(-64);
@@ -49,7 +48,7 @@ class RoutePlannerTest {
     @Test
     void flatGroundHasNoArcWaypoints() {
         RoutePlanner planner = new RoutePlanner();
-        World world = worldWithARidgeAt(-1000); // no ridge actually reachable
+        World world = worldWithARidgeAt(-1000);
 
         List<double[]> route = planner.route(world, 0, 1, 0, 3, 1, 0);
 

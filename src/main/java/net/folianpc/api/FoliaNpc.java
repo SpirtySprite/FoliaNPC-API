@@ -21,7 +21,6 @@ import org.bukkit.plugin.Plugin;
 
 import java.util.UUID;
 
-// Entry point. Create once in onEnable, close() in onDisable.
 public final class FoliaNpc {
 
     private final Plugin plugin;
@@ -46,7 +45,6 @@ public final class FoliaNpc {
         this.manager = manager;
     }
 
-    // Throws if the server is older than 1.20.6 or the packet layer can't bind.
     public static FoliaNpc create(Plugin plugin) {
         NmsProtocolBackend backend = new NmsProtocolBackend(plugin);
         PlayerTracker tracker = new PlayerTracker();

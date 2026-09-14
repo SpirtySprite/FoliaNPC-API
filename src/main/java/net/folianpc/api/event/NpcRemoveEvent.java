@@ -4,7 +4,6 @@ import net.folianpc.api.Npc;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-// Not cancellable: the NPC is already gone by the time this fires.
 public class NpcRemoveEvent extends Event {
 
     private static final HandlerList HANDLERS = new HandlerList();

@@ -779,8 +779,6 @@ public final class NpcImpl implements Npc {
         return !nametagVisible || glowColor != null || !collidable;
     }
 
-    // Teams match on player name, so a visible plate uses the display name but a hidden one needs a
-    // unique id-derived name instead - otherwise it could collide with a real player's name.
     public String profileName() {
         String wire = needsTeam() ? uuid.toString().replace("-", "") : name;
         return wire.length() > MAX_PROFILE_NAME ? wire.substring(0, MAX_PROFILE_NAME) : wire;

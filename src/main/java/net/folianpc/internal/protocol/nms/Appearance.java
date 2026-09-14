@@ -177,10 +177,6 @@ final class Appearance {
         }
     }
 
-    // Discovered from the actual registry instance's own runtime class rather than by resolving
-    // "net.minecraft.core.Registry" by name - that name-based lookup was somehow resolving to the
-    // wrong class entirely on at least one server build, for reasons that were never pinned down.
-    // Going through a live instance sidesteps whatever that was.
     private Method registryGetMethod(Object registry) {
         if (registryGet != null) {
             return registryGet;
@@ -269,8 +265,6 @@ final class Appearance {
         return villagerDataIndex >= 0;
     }
 
-    // The get(Identifier) method itself is deliberately not resolved here by asking for the Registry
-    // class by name - see registryGetMethod, which discovers it from a live instance instead.
     private void resolveRegistryTools() {
         try {
             Class<?> id = Reflect.nms("resources", "Identifier", "ResourceLocation");
@@ -300,8 +294,6 @@ final class Appearance {
         return Reflect.invoke(lookupOrThrow, access, resourceKey);
     }
 
-    // RegistryAccess has three same-erasure overloads of lookupOrThrow(ResourceKey); only the one
-    // actually returning Registry is any use here, and return type is the only way to tell them apart.
     private static Method findLookupOrThrowReturningRegistry(Class<?> registryAccessClass) {
         for (Method m : registryAccessClass.getMethods()) {
             if (m.getName().equals("lookupOrThrow") && m.getParameterCount() == 1

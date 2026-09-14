@@ -154,7 +154,6 @@ final class Profiles {
     private void resolveMutablePropertyMapPath() {
         try {
             Class<?> multimap = Reflect.tryClass("com.google.common.collect.Multimap");
-            // GameProfile.getProperties() was renamed to properties() at some point.
             Method propertiesGetterMethod;
             try {
                 propertiesGetterMethod = Reflect.method(profileClass, "getProperties");

@@ -4,7 +4,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Collection;
 
-/** Hides an NPC's built-in name plate by putting its profile name on a team set to NEVER show tags. */
 final class Teams {
 
     private final Class<?> visibilityClass;
@@ -39,7 +38,6 @@ final class Teams {
         this.removePacket = Reflect.method(packet, "createRemovePacket", playerTeam);
     }
 
-    /** Client-side teams are permanent until removed, so every created team needs this on despawn. */
     Object removePacket(String profileName) {
         return Reflect.invoke(removePacket, null, team(profileName));
     }

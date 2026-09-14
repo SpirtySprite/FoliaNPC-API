@@ -7,8 +7,6 @@ import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-// Each player's last known location, snapshotted on their own thread. The NPC loop reads these
-// instead of calling getLocation() on a foreign entity, which is illegal across regions on Folia.
 public final class PlayerTracker {
 
     public record Tracked(Player player, String world, double x, double y, double z) {
@@ -19,7 +17,6 @@ public final class PlayerTracker {
 
     private final ConcurrentHashMap<UUID, Tracked> tracked = new ConcurrentHashMap<>();
 
-    // Must run on the player's own region thread.
     public void refresh(Player player) {
         Location loc = player.getLocation();
         String world = loc.getWorld() != null ? loc.getWorld().getName() : "";

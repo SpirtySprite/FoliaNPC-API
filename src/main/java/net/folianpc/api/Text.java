@@ -4,8 +4,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
-// A string containing '<' is read as MiniMessage; anything else as legacy '&' codes, so older
-// strings keep working.
 public final class Text {
 
     private static final MiniMessage MINI = MiniMessage.miniMessage();

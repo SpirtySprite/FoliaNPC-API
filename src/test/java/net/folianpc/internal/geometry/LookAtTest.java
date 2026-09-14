@@ -10,7 +10,6 @@ class LookAtTest {
 
     @Test
     void facesSouthAtZeroYaw() {
-        // +Z is south, yaw 0.
         LookAt.Rotation r = LookAt.face(0, 0, 0, 0, 0, 10);
         assertEquals(0f, r.yaw(), EPS);
         assertEquals(0f, r.pitch(), EPS);

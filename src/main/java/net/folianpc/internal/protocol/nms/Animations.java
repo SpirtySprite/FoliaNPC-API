@@ -3,8 +3,6 @@ package net.folianpc.internal.protocol.nms;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
-// One-shot animations (swing arm, etc). The packet's only public constructor wants a live Entity we
-// do not have, so it is allocated and its two int fields (entity id, action) are set directly.
 final class Animations {
 
     private final Class<?> packetClass;

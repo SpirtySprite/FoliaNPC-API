@@ -9,7 +9,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Text-display entities, used for the floating nametag lines. */
 final class Displays {
 
     private static final byte BILLBOARD_CENTER = 3;
@@ -88,7 +87,6 @@ final class Displays {
         return paperToVanilla != null;
     }
 
-    /** Paper converts Adventure directly, keeping gradients; otherwise fall back to section codes. */
     private Object toVanilla(Component component) {
         if (paperToVanilla != null) {
             Object converted = Reflect.invoke(paperToVanilla, null, component);

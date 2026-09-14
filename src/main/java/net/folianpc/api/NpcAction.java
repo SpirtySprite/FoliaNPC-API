@@ -2,7 +2,6 @@ package net.folianpc.api;
 
 import java.util.function.Predicate;
 
-// ctx carries the click details plus Folia-safe ways to schedule work.
 @FunctionalInterface
 public interface NpcAction {
 

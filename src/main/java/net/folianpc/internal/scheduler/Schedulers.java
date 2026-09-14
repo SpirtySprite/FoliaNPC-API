@@ -62,7 +62,6 @@ public final class Schedulers {
         Bukkit.getGlobalRegionScheduler().execute(plugin, task);
     }
 
-    // Unlike global(), this is allowed to read world/block data - Folia enforces that per-chunk.
     public static void onRegion(Plugin plugin, org.bukkit.Location location, Runnable task) {
         if (synchronousForTesting) {
             task.run();

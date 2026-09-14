@@ -10,8 +10,6 @@ import org.bukkit.plugin.Plugin;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-// One per click, shared by every action it triggers. Delayed actions can run on a later tick, so
-// cancelled is volatile.
 public final class ClickContext implements NpcClickContext {
 
     private final Plugin plugin;

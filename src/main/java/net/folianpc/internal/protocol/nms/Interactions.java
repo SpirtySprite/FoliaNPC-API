@@ -27,14 +27,13 @@ final class Interactions {
                 "ServerboundInteractPacket", "PacketPlayInUseEntity");
         this.handClass = Reflect.nms("world", "InteractionHand", "EnumHand");
         this.entityIdField = Reflect.fieldOfType(interactClass, int.class);
-        this.sneakingField = Reflect.fieldOfType(interactClass, boolean.class); // usingSecondaryAction
+        this.sneakingField = Reflect.fieldOfType(interactClass, boolean.class);
 
         Field action = null;
         Method actionType = null;
         Class<?> attack = null;
         Field attackId = null;
         try {
-            // Newer versions dropped getActionType(); read the Action and match its getter by return type.
             Class<?> actionClass = Nms.nested(interactClass, "Action", "b");
             Class<?> actionTypeClass = Nms.nested(interactClass, "ActionType", "c");
             action = Reflect.fieldOfType(interactClass, actionClass);
@@ -63,7 +62,6 @@ final class Interactions {
             Object action = Reflect.get(actionField, packet);
             String type = ((Enum<?>) Reflect.invoke(actionTypeMethod, action)).name();
 
-            // A right click sends INTERACT_AT then INTERACT, and fires for both hands; count one of each.
             if (type.equals("INTERACT_AT") || "OFF_HAND".equals(hand(action))) {
                 return null;
             }

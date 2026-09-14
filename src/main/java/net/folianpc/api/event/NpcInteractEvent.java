@@ -7,8 +7,6 @@ import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-// Fires before the NPC's own listener/actions; cancelling stops both. Fired on the clicking
-// player's region thread.
 public class NpcInteractEvent extends Event implements Cancellable {
 
     private static final HandlerList HANDLERS = new HandlerList();

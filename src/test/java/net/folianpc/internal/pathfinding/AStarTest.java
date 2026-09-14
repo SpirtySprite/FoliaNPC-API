@@ -11,8 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AStarTest {
 
-    // A fake grid: an open floor at y=0 (so y=1 is standable everywhere) plus explicit solid blocks
-    // added to build walls and ledges. No Bukkit involved.
     private static final class Grid implements AStar.WorldSampler {
         private final Set<Long> solid = new HashSet<>();
 
@@ -31,7 +29,7 @@ class AStarTest {
         @Override
         public boolean solid(int x, int y, int z) {
             if (y == 0) {
-                return true; // floor everywhere by default
+                return true;
             }
             return solid.contains(key(x, y, z));
         }
@@ -59,7 +57,7 @@ class AStarTest {
     @Test
     void routesAroundAWallInTheWay() {
         Grid grid = new Grid();
-        grid.wall(3, -5, 3, 5, 1); // a wall at x=3 spanning z -5..5, blocking the straight line
+        grid.wall(3, -5, 3, 5, 1);
         grid.wall(3, -5, 3, 5, 2);
 
         List<AStar.Node> route = AStar.find(grid, at(0, 1, 0), at(6, 1, 0), 4000, 128);
@@ -75,7 +73,7 @@ class AStarTest {
     @Test
     void unreachableGoalReturnsNoRoute() {
         Grid grid = new Grid();
-        grid.wall(-10, 3, 10, 3, 1); // seals the goal off in every direction
+        grid.wall(-10, 3, 10, 3, 1);
         grid.wall(-10, 3, 10, 3, 2);
         grid.wall(-10, -3, 10, -3, 1);
         grid.wall(-10, -3, 10, -3, 2);
@@ -92,8 +90,6 @@ class AStarTest {
     @Test
     void stepsUpASingleBlockLedge() {
         Grid grid = new Grid();
-        // A single-layer ridge wide enough that detouring around either end costs far more than
-        // stepping over it, so the cheaper route is up and over.
         grid.wall(3, -10, 3, 10, 1);
 
         List<AStar.Node> route = AStar.find(grid, at(0, 1, 0), at(5, 1, 0), 4000, 128);
@@ -105,7 +101,6 @@ class AStarTest {
     @Test
     void stepsDownOffALedgeWithinTheFallLimit() {
         Grid grid = new Grid();
-        // Raise the floor for x<3 by two blocks, so crossing x=3 is a two-block drop (within MAX_STEP_DOWN).
         grid.wall(-5, -5, 2, 5, 1);
         grid.wall(-5, -5, 2, 5, 2);
 
@@ -118,8 +113,6 @@ class AStarTest {
     @Test
     void refusesADropBiggerThanTheFallLimit() {
         Grid grid = new Grid();
-        // A four-block-high wall the NPC would have to drop off - deeper than MAX_STEP_DOWN (3) - and
-        // no other way around within the search radius.
         grid.wall(-20, -1, 2, 1, 1);
         grid.wall(-20, -1, 2, 1, 2);
         grid.wall(-20, -1, 2, 1, 3);
@@ -133,7 +126,6 @@ class AStarTest {
     @Test
     void refusesToCutThroughADiagonalWallCorner() {
         Grid grid = new Grid();
-        // Two solid columns forming an L; only a diagonal step could cut the corner between them.
         grid.set(1, 1, 0);
         grid.set(1, 2, 0);
         grid.set(0, 1, 1);
