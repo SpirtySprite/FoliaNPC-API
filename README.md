@@ -316,6 +316,19 @@ that changed while they were offline shouldn't silently resurrect a stale overri
 override to persist across sessions, re-apply it yourself on their next join, sourced from your own
 storage. `UUID`-based overloads exist for setting overrides on players who are currently offline.
 
+For a rule rather than a list of players, give the NPC a condition. It is evaluated for players in range
+on each visibility pass, a per-player override still wins over it, and a condition that throws simply
+hides the NPC from that player instead of breaking the pass:
+
+```java
+npc.visibleWhen(player -> player.hasPermission("rank.vip"));
+npc.visibleWhen(player -> quests.step(player) >= 3);
+npc.visibleWhen(null);  // back to everyone in range
+```
+
+Teleports are tracked too: after `/spawn`, `/warp` or any other teleport, NPCs at the destination
+appear and NPCs at the origin disappear without waiting for the player to take a step.
+
 Visibility overrides are **not** included in `NpcData` / `npc.data()` — they are runtime-only state by
 design, precisely because they're meant to be re-derived from your own permission/quest logic on each
 join rather than snapshotted and blindly restored.
@@ -394,8 +407,10 @@ whether the underlying team subsystem bound at all on this server.
 
 ### Text formatting
 
-Text is parsed as MiniMessage if it contains a `<` character, otherwise as legacy `&`-code formatting —
-this rule applies everywhere text is accepted (nametag lines, `Actions.message`). `Text.mini(...)`,
+Text accepts MiniMessage and legacy codes (`&a`, `§a`, `&#rrggbb`, `§x§r§r§g§g§b§b`) in the same string,
+so `&6Gold <bold>and bold` works as expected. This applies everywhere text is accepted (nametag lines,
+`Actions.message`, `Actions.title`, `Actions.actionBar`). `Text.escape(...)` neutralises tags in untrusted
+input and `Text.plain(...)` flattens a component back to plain text. `Text.mini(...)`,
 `Text.legacy(...)`, and `Text.toMini(component)` are available if you want to be explicit rather than
 rely on the auto-detection, or need to convert an existing `Component` back into a MiniMessage string
 for storage. `Capabilities.richText` reports whether the server can render true Adventure components
@@ -410,6 +425,15 @@ resolver of your own:
 npcs.placeholders((player, line) -> PlaceholderAPI.setPlaceholders(player, line));
 npc.nametag(List.of("<gold>%vault_eco_balance%"));   // resolves differently for each player who sees it
 npc.autoRefreshNametag(40);                          // re-resolve and re-send every 40 ticks; 0 disables
+```
+
+For the common case there is a ready made resolver: `%player%`, `%online%` and `%world%` are built in,
+and PlaceholderAPI is used automatically when it is installed (detected lazily, so load order does not
+matter). You can chain your own resolver in front of it:
+
+```java
+npcs.placeholderApi();
+npcs.placeholderApi((player, line) -> line.replace("%rank%", ranks.of(player)));
 ```
 
 The resolver function runs on the raw line string *before* MiniMessage/legacy parsing, so placeholder
@@ -626,8 +650,29 @@ npc.addAction(ClickType.RIGHT, Actions.message("<green>Hello %player%!"))
    .cooldown(2000);
 ```
 
-The built-in actions are `message`, `command`, `consoleCommand`, `teleport`, `sound`,
-`connectToServer`, and `requirePermission`. `%player%` (the clicking player's name) and `%npc%` (the
+The built-in actions are `message`, `actionBar`, `title`, `command`, `consoleCommand`, `teleport`,
+`sound`, `give`, `emote`, `swing`, `connectToServer`, `requirePermission` and `requireSneaking`, plus
+the combinators `chance`, `random`, `sequence`, `cooldown` and `oncePerPlayer`:
+
+```java
+npc.addAction(ClickType.RIGHT, Actions.cooldown(Duration.ofHours(24),
+        Actions.sequence(
+                Actions.give(new ItemStack(Material.DIAMOND, 3)),
+                Actions.title("<gold>Daily reward", "<gray>See you tomorrow %player%"),
+                Actions.emote(Emote.WAVE)),
+        "<red>Come back in %seconds%s."));
+
+npc.addAction(ClickType.RIGHT, Actions.random(
+        Actions.message("<gray>Nice weather today."),
+        Actions.message("<gray>Have you seen the rift?")));
+
+npc.addAction(ClickType.RIGHT, Actions.chance(0.05, Actions.give(rareItem)));
+npc.addAction(ClickType.RIGHT, Actions.oncePerPlayer(Actions.message("<aqua>First time here?")));
+```
+
+`cooldown` is per player and cancels the remaining actions of that click while it is running, so it can
+guard a whole chain. `oncePerPlayer` is kept in memory only, so it resets on restart; persist the
+information yourself if it has to survive one. `%player%` (the clicking player's name) and `%npc%` (the
 NPC's display name) are substituted into any text-bearing action for you. Actions compose functionally:
 
 ```java
