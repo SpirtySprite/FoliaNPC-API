@@ -46,6 +46,7 @@ public final class NmsProtocolBackend implements ProtocolBackend {
     private final Constructor<?> removeEntitiesCtor;
     private final Constructor<?> moveRotCtor;
     private final Constructor<?> movePosCtor;
+    private final Constructor<?> linearDeltaCtor;
     private final Class<?> rotateHeadClass;
     private final Field rotateHeadId;
     private final Field rotateHeadYaw;
@@ -93,8 +94,17 @@ public final class NmsProtocolBackend implements ProtocolBackend {
         this.removeEntitiesCtor = Reflect.constructor(removeEntities, int[].class);
         this.moveRotCtor = Reflect.constructor(Nms.nested(moveEntity, "Rot", "d"),
                 int.class, byte.class, byte.class, boolean.class);
-        this.movePosCtor = Reflect.constructor(Nms.nested(moveEntity, "Pos", "a"),
-                int.class, short.class, short.class, short.class, boolean.class);
+        Class<?> movePos = Nms.nested(moveEntity, "Pos", "a");
+        Class<?> vecDelta = Reflect.tryClass("net.minecraft.network.protocol.game.VecDelta");
+        if (vecDelta == null) {
+            this.movePosCtor = Reflect.constructor(movePos, int.class, short.class, short.class, short.class,
+                    boolean.class);
+            this.linearDeltaCtor = null;
+        } else {
+            this.movePosCtor = Reflect.constructor(movePos, int.class, vecDelta, boolean.class);
+            this.linearDeltaCtor = Reflect.constructor(Nms.nested(vecDelta, "Linear", "Linear"),
+                    short.class, short.class, short.class);
+        }
 
         this.rotateHeadClass = Reflect.nms("network.protocol.game",
                 "ClientboundRotateHeadPacket", "PacketPlayOutEntityHeadRotation");
@@ -212,7 +222,12 @@ public final class NmsProtocolBackend implements ProtocolBackend {
 
     @Override
     public void move(Player viewer, int entityId, double dx, double dy, double dz) {
-        send(viewer, Reflect.newInstance(movePosCtor, entityId, delta(dx), delta(dy), delta(dz), true));
+        if (linearDeltaCtor == null) {
+            send(viewer, Reflect.newInstance(movePosCtor, entityId, delta(dx), delta(dy), delta(dz), true));
+            return;
+        }
+        Object step = Reflect.newInstance(linearDeltaCtor, delta(dx), delta(dy), delta(dz));
+        send(viewer, Reflect.newInstance(movePosCtor, entityId, step, true));
     }
 
     private static short delta(double blocks) {
