@@ -60,7 +60,9 @@ type, a skin) but that UUID belongs to no actual player and no actual entity any
 
 - Java 21
 - Paper or Folia **1.20.6 or newer**, Mojang-mapped (this is the default for all modern Paper/Folia
-  builds; you don't need to do anything special to get it)
+  builds; you don't need to do anything special to get it). This includes the calendar-numbered
+  releases (26.x): tested on Purpur 26.3, where the position packet now carries a `VecDelta` and team
+  colours are set through `TeamColor`; both forms are detected at startup.
 - No other plugins, dependencies, or protocol libraries required at runtime
 
 `FoliaNpc.create(plugin)` checks the version at startup and throws `IllegalStateException` immediately
@@ -68,6 +70,10 @@ if the server is older than 1.20.6. There's no partial/degraded support for olde
 whole packet layer binds, or NPC creation refuses to start at all. See
 [FoliaNpc.create() throws IllegalStateException](#foliaNpccreate-throws-illegalstateexception) if this
 happens on a server you believe meets the requirement.
+
+On 26.x the server no longer exposes its entity-id counter, so FoliaNPC logs one warning at startup and
+uses its own counter, placed far above the ids the game hands out. NPC ids never collide with real
+entities.
 
 ## Installation
 
@@ -982,6 +988,14 @@ compatibility layer) first — it rewrites entity metadata packets in flight to 
 client expects, and that rewriting can miss or mistranslate fields this library sends that weren't
 present in the version ViaVersion is translating for. This is a limitation of running a cross-version
 setup at all, not something specific to FoliaNPC.
+
+### Duplicate NPCs or dead clicks after a PlugMan reload
+
+Fixed: `close()` now removes every NPC and nametag line from every client directly, without going
+through the scheduler (which refuses tasks once Bukkit has marked the plugin disabled, before
+`onDisable` even runs). FoliaNPC also closes itself on its owner's `PluginDisableEvent`, so a plugin that
+forgets to call `close()` still unloads cleanly. Reloading with PlugMan no longer leaves ghost NPCs on
+the client, and clicks keep working without rejoining.
 
 ### Memory or thread-count grows across repeated `/reload`s
 

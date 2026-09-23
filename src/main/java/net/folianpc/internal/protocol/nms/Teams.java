@@ -28,7 +28,6 @@ final class Teams {
 
         this.visibilityClass = Nms.nested(team, "Visibility", "EnumNameTagVisibility");
         this.collisionClass = Nms.nested(team, "CollisionRule", "EnumTeamPush");
-
         this.scoreboardCtor = Reflect.constructor(scoreboard);
         this.teamCtor = Reflect.constructor(playerTeam, scoreboard, String.class);
         this.setVisibility = Reflect.method(playerTeam, "setNameTagVisibility", visibilityClass);
