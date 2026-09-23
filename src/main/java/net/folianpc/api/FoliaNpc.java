@@ -17,6 +17,8 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.EventPriority;
 import org.bukkit.plugin.Plugin;
 
 import java.util.UUID;
@@ -33,6 +35,8 @@ public final class FoliaNpc {
         t.setDaemon(true);
         return t;
     });
+
+    private static final long TELEPORT_SETTLE_TICKS = 2L;
 
     private Schedulers.Handle timer;
     private Listener listener;
@@ -83,6 +87,12 @@ public final class FoliaNpc {
                     return;
                 }
                 tracker.refresh(e.getPlayer());
+            }
+
+            @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+            public void onTeleport(PlayerTeleportEvent e) {
+                Player p = e.getPlayer();
+                Schedulers.onEntityLater(plugin, p, () -> tracker.refresh(p), TELEPORT_SETTLE_TICKS);
             }
 
             @EventHandler
@@ -153,6 +163,15 @@ public final class FoliaNpc {
     public FoliaNpc placeholders(java.util.function.BiFunction<Player, String, String> resolver) {
         backend.nametagResolver(resolver);
         return this;
+    }
+
+    public FoliaNpc placeholderApi() {
+        return placeholders(Placeholders.standard());
+    }
+
+    public FoliaNpc placeholderApi(java.util.function.BiFunction<Player, String, String> extra) {
+        java.util.function.BiFunction<Player, String, String> standard = Placeholders.standard();
+        return placeholders((viewer, text) -> standard.apply(viewer, extra.apply(viewer, text)));
     }
 
     public Npc spawn(NpcData data) {

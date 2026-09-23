@@ -256,7 +256,7 @@ public final class NpcManager {
                 continue;
             }
             boolean stillVisible = t.world().equals(snapshot.world())
-                    && npc.visibleTo(viewerId, npc.position().distanceSquared(t.x(), t.y(), t.z()) <= maxDistSq);
+                    && npc.visibleTo(t.player(), npc.position().distanceSquared(t.x(), t.y(), t.z()) <= maxDistSq);
             npc.forgetLook(viewerId);
             Player viewer = t.player();
             if (stillVisible) {
@@ -339,13 +339,20 @@ public final class NpcManager {
         }
     }
 
+    private final Map<String, List<PlayerTracker.Tracked>> playersByWorld = new java.util.HashMap<>();
+
     public void tick() {
         long start = System.nanoTime();
+        playersByWorld.clear();
+        for (PlayerTracker.Tracked t : tracker.all()) {
+            playersByWorld.computeIfAbsent(t.world(), key -> new java.util.ArrayList<>()).add(t);
+        }
         for (NpcImpl npc : byId.values()) {
             if (!npc.removed()) {
                 tick(npc);
             }
         }
+        playersByWorld.clear();
         lastTickMillis = (System.nanoTime() - start) / 1_000_000.0;
     }
 
@@ -384,18 +391,15 @@ public final class NpcManager {
             nearNow.clear();
         }
 
-        for (PlayerTracker.Tracked t : tracker.all()) {
-            if (!t.world().equals(pos.world())) {
-                continue;
+        List<PlayerTracker.Tracked> sameWorld = playersByWorld.getOrDefault(pos.world(), List.of());
+        double proxRadius = trackProximity ? npc.proximityRadius() : 0.0;
+        double proxSq = proxRadius * proxRadius;
+        for (PlayerTracker.Tracked t : sameWorld) {
+            double distSq = pos.distanceSquared(t.x(), t.y(), t.z());
+            if (trackProximity && distSq <= proxSq) {
+                nearNow.add(t.uuid());
             }
-            if (trackProximity) {
-                double proxRadius = npc.proximityRadius();
-                if (pos.distanceSquared(t.x(), t.y(), t.z()) <= proxRadius * proxRadius) {
-                    nearNow.add(t.uuid());
-                }
-            }
-            boolean inRange = pos.distanceSquared(t.x(), t.y(), t.z()) <= maxDistSq;
-            if (!npc.visibleTo(t.uuid(), inRange)) {
+            if (!npc.visibleTo(t.player(), distSq <= maxDistSq)) {
                 continue;
             }
             shouldSee.add(t.uuid());

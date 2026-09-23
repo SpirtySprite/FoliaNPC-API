@@ -19,7 +19,15 @@ public final class Text {
         if (text == null || text.isEmpty()) {
             return Component.empty();
         }
-        return text.indexOf('<') >= 0 ? MINI.deserialize(text) : LEGACY.deserialize(text);
+        return MINI.deserialize(Legacy.toMini(text));
+    }
+
+    public static String escape(String value) {
+        return value == null ? "" : MINI.escapeTags(value);
+    }
+
+    public static String plain(Component component) {
+        return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(component);
     }
 
     public static Component mini(String miniMessage) {

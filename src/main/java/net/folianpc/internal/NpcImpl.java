@@ -62,6 +62,7 @@ public final class NpcImpl implements Npc {
     private final Map<ClickType, List<ActionEntry>> actions = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastInteract = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> visibility = new ConcurrentHashMap<>();
+    private volatile java.util.function.Predicate<org.bukkit.entity.Player> visibleWhen;
     private final Map<UUID, Integer> lastLook = new ConcurrentHashMap<>();
 
     private volatile String name;
@@ -703,8 +704,34 @@ public final class NpcImpl implements Npc {
         return this;
     }
 
-    boolean visibleTo(UUID playerId, boolean inRange) {
-        return visibility.getOrDefault(playerId, inRange);
+    @Override
+    public Npc visibleWhen(java.util.function.Predicate<org.bukkit.entity.Player> condition) {
+        this.visibleWhen = condition;
+        return this;
+    }
+
+    @Override
+    public java.util.function.Predicate<org.bukkit.entity.Player> visibleWhen() {
+        return visibleWhen;
+    }
+
+    boolean visibleTo(org.bukkit.entity.Player player, boolean inRange) {
+        Boolean forced = visibility.get(player.getUniqueId());
+        if (forced != null) {
+            return forced;
+        }
+        if (!inRange) {
+            return false;
+        }
+        java.util.function.Predicate<org.bukkit.entity.Player> condition = visibleWhen;
+        if (condition == null) {
+            return true;
+        }
+        try {
+            return condition.test(player);
+        } catch (RuntimeException failure) {
+            return false;
+        }
     }
 
     boolean lookChanged(UUID playerId, float yaw, float pitch) {
@@ -764,15 +791,19 @@ public final class NpcImpl implements Npc {
     }
 
     boolean allowInteract(UUID viewer, long nowMillis) {
-        if (cooldownMillis <= 0) {
+        long cooldown = cooldownMillis;
+        if (cooldown <= 0) {
             return true;
         }
-        Long last = lastInteract.get(viewer);
-        if (last != null && nowMillis - last < cooldownMillis) {
-            return false;
-        }
-        lastInteract.put(viewer, nowMillis);
-        return true;
+        boolean[] allowed = {false};
+        lastInteract.compute(viewer, (key, last) -> {
+            if (last != null && nowMillis - last < cooldown) {
+                return last;
+            }
+            allowed[0] = true;
+            return nowMillis;
+        });
+        return allowed[0];
     }
 
     boolean needsTeam() {
@@ -842,6 +873,7 @@ public final class NpcImpl implements Npc {
         clone.mirrorSkin = mirrorSkin;
         clone.owner = owner;
         clone.cooldownMillis = cooldownMillis;
+        clone.visibleWhen = visibleWhen;
         clone.viewDistance = viewDistance;
         clone.showInTabList = showInTabList;
         clone.nametagStyle = nametagStyle;

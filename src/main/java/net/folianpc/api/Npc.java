@@ -126,6 +126,10 @@ public interface Npc {
 
     Npc resetVisibility(UUID playerId);
 
+    Npc visibleWhen(java.util.function.Predicate<org.bukkit.entity.Player> condition);
+
+    java.util.function.Predicate<org.bukkit.entity.Player> visibleWhen();
+
     default Npc showTo(org.bukkit.entity.Player player) {
         return showTo(player.getUniqueId());
     }
