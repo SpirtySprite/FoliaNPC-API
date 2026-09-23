@@ -18,6 +18,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.event.EventPriority;
 import org.bukkit.plugin.Plugin;
 
@@ -40,7 +41,7 @@ public final class FoliaNpc {
 
     private Schedulers.Handle timer;
     private Listener listener;
-    private boolean closed;
+    private volatile boolean closed;
 
     private FoliaNpc(Plugin plugin, NmsProtocolBackend backend, PlayerTracker tracker, NpcManager manager) {
         this.plugin = plugin;
@@ -87,6 +88,13 @@ public final class FoliaNpc {
                     return;
                 }
                 tracker.refresh(e.getPlayer());
+            }
+
+            @EventHandler(priority = EventPriority.MONITOR)
+            public void onPluginDisable(PluginDisableEvent e) {
+                if (e.getPlugin() == plugin) {
+                    close();
+                }
             }
 
             @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -252,7 +260,7 @@ public final class FoliaNpc {
         return "npcs=" + manager.count() + " trackedPlayers=" + tracker.size();
     }
 
-    public void close() {
+    public synchronized void close() {
         if (closed) {
             return;
         }
