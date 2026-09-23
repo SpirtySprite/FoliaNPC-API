@@ -113,6 +113,24 @@ class UpgradeTest {
     }
 
     @Test
+    void closeRemovesNpcsFromClientsEvenWhenThePluginIsAlreadyDisabled() {
+        NpcImpl npc = manager.create("Guard", new Position("world", 0, 64, 0, 0, 0));
+        npc.nametag(java.util.List.of("Line"));
+        Player viewer = player(UUID.randomUUID(), "Viewer");
+        tracker.put(new PlayerTracker.Tracked(viewer, "world", 0, 64, 5));
+        manager.tick();
+        assertTrue(npc.viewers().contains(viewer.getUniqueId()));
+
+        Schedulers.setSynchronousForTesting(false);
+        manager.close();
+
+        assertEquals(1, backend.hides.size());
+        assertEquals(npc.entityId(), backend.hides.get(0).entityId());
+        assertTrue(backend.removed.stream().anyMatch(ids -> ids.length > 0));
+        assertEquals(0, manager.count());
+    }
+
+    @Test
     void cooldownActionBlocksPerPlayerAndCancelsTheRest() {
         AtomicInteger runs = new AtomicInteger();
         NpcAction guarded = Actions.cooldown(Duration.ofMinutes(1), ctx -> runs.incrementAndGet(), null);

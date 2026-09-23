@@ -533,15 +533,28 @@ public final class NpcManager {
 
     public void close() {
         for (NpcImpl npc : byId.values()) {
+            NpcSnapshot snapshot = npc.snapshot();
+            int[] lineIds = npc.nametagIds();
             for (UUID viewerId : npc.viewers()) {
                 PlayerTracker.Tracked t = tracker.get(viewerId);
                 if (t != null) {
-                    hideFrom(t.player(), npc);
+                    hideNow(t.player(), snapshot, lineIds);
                 }
             }
             npc.viewers().clear();
         }
         byId.clear();
         byEntityId.clear();
+    }
+
+    private void hideNow(Player viewer, NpcSnapshot snapshot, int[] lineIds) {
+        try {
+            backend.hide(viewer, snapshot);
+            if (lineIds.length > 0) {
+                backend.removeEntities(viewer, lineIds);
+            }
+        } catch (RuntimeException failure) {
+            log("could not hide '" + snapshot.name() + "' from " + viewer.getName() + " on close: " + failure);
+        }
     }
 }

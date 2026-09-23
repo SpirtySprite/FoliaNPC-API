@@ -8,7 +8,8 @@ final class Teams {
 
     private final Class<?> visibilityClass;
     private final Class<?> collisionClass;
-    private final Class<?> formattingClass;
+    private final Class<?> colorClass;
+    private final boolean optionalColor;
     private final Constructor<?> scoreboardCtor;
     private final Constructor<?> teamCtor;
     private final Method setVisibility;
@@ -27,12 +28,28 @@ final class Teams {
 
         this.visibilityClass = Nms.nested(team, "Visibility", "EnumNameTagVisibility");
         this.collisionClass = Nms.nested(team, "CollisionRule", "EnumTeamPush");
-        this.formattingClass = Reflect.tryClass("net.minecraft.ChatFormatting");
         this.scoreboardCtor = Reflect.constructor(scoreboard);
         this.teamCtor = Reflect.constructor(playerTeam, scoreboard, String.class);
         this.setVisibility = Reflect.method(playerTeam, "setNameTagVisibility", visibilityClass);
         this.setCollision = Reflect.method(playerTeam, "setCollisionRule", collisionClass);
-        this.setColor = Reflect.method(playerTeam, "setColor", formattingClass);
+        Class<?> formatting = Reflect.tryClass("net.minecraft.ChatFormatting");
+        Method legacyColor = null;
+        if (formatting != null) {
+            try {
+                legacyColor = Reflect.method(playerTeam, "setColor", formatting);
+            } catch (IllegalStateException moved) {
+                legacyColor = null;
+            }
+        }
+        if (legacyColor != null) {
+            this.colorClass = formatting;
+            this.optionalColor = false;
+            this.setColor = legacyColor;
+        } else {
+            this.colorClass = Reflect.nms("world.scores", "TeamColor", null);
+            this.optionalColor = true;
+            this.setColor = Reflect.method(playerTeam, "setColor", java.util.Optional.class);
+        }
         this.members = Reflect.methodReturning(playerTeam, Collection.class);
         this.createPacket = Reflect.method(packet, "createAddOrModifyPacket", playerTeam, boolean.class);
         this.removePacket = Reflect.method(packet, "createRemovePacket", playerTeam);
@@ -54,7 +71,8 @@ final class Teams {
         Reflect.invoke(setCollision, team,
                 Reflect.enumConstant(collisionClass, collidable ? "ALWAYS" : "NEVER"));
         if (color != null) {
-            Reflect.invoke(setColor, team, Reflect.enumConstant(formattingClass, color.toUpperCase()));
+            Object constant = Reflect.enumConstant(colorClass, color.toUpperCase(java.util.Locale.ROOT));
+            Reflect.invoke(setColor, team, optionalColor ? java.util.Optional.of(constant) : constant);
         }
         ((Collection<Object>) Reflect.invoke(members, team)).add(profileName);
         return Reflect.invoke(createPacket, null, team, true);
