@@ -6,6 +6,13 @@ All notable changes to FoliaNPC are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Players riding a vehicle now keep their tracked position up to date (via `VehicleMoveEvent`), so NPCs
+  spawn and despawn for them while they ride. Movement of a rider is not reported as player movement.
+- Skin lookups that fail (Mojang outage or rate limit) are remembered for 5 seconds instead of being
+  retried on every request. Configure with `FoliaNpc#skinFailureCooldown`; `Duration.ZERO` disables it.
+- `fetchSkinFromUrl` results are cached per URL and concurrent requests for one URL share a single call.
+
 ### Added
 - Continuous integration with a Paper API version matrix, CodeQL analysis and Dependabot.
 - Release workflow: pushing a `vX.Y.Z` tag builds the project and publishes a GitHub release.

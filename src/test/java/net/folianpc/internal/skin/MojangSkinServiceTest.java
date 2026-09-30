@@ -56,8 +56,9 @@ class MojangSkinServiceTest {
     }
 
     @Test
-    void failedLookupsAreNotCached() {
+    void withNoCooldownFailedLookupsAreRetriedImmediately() {
         MojangSkinService service = new MojangSkinService();
+        service.failureTtl(Duration.ZERO);
         var cache = new ConcurrentHashMap<String, MojangSkinService.Cached>();
         AtomicInteger fetches = new AtomicInteger();
 
@@ -70,6 +71,46 @@ class MojangSkinServiceTest {
 
         assertEquals(3, fetches.get(), "one network blip must not break a skin until restart");
         assertTrue(cache.isEmpty());
+    }
+
+    @Test
+    void failedLookupsAreRememberedBrieflySoAnOutageIsNotHammered() {
+        MojangSkinService service = new MojangSkinService();
+        service.failureTtl(Duration.ofMinutes(1));
+        var cache = new ConcurrentHashMap<String, MojangSkinService.Cached>();
+        AtomicInteger fetches = new AtomicInteger();
+
+        CompletableFuture<Skin> last = null;
+        for (int i = 0; i < 5; i++) {
+            last = service.lookup(cache, "steve", key -> {
+                fetches.incrementAndGet();
+                return CompletableFuture.failedFuture(new IllegalStateException("rate limited"));
+            });
+        }
+
+        assertEquals(1, fetches.get(), "repeat requests inside the cooldown must not reach Mojang again");
+        assertTrue(last.isCompletedExceptionally());
+    }
+
+    @Test
+    void afterTheCooldownAFailedLookupIsTriedAgain() throws InterruptedException {
+        MojangSkinService service = new MojangSkinService();
+        service.failureTtl(Duration.ofMillis(20));
+        var cache = new ConcurrentHashMap<String, MojangSkinService.Cached>();
+        AtomicInteger fetches = new AtomicInteger();
+
+        service.lookup(cache, "steve", key -> {
+            fetches.incrementAndGet();
+            return CompletableFuture.failedFuture(new IllegalStateException("down"));
+        });
+        Thread.sleep(60);
+        CompletableFuture<Skin> retry = service.lookup(cache, "steve", key -> {
+            fetches.incrementAndGet();
+            return CompletableFuture.completedFuture(Skin.of("value", null));
+        });
+
+        assertEquals(2, fetches.get());
+        assertEquals("value", retry.join().value());
     }
 
     @Test
@@ -112,8 +153,9 @@ class MojangSkinServiceTest {
     }
 
     @Test
-    void aThrowingFetchIsReportedAndForgotten() {
+    void aThrowingFetchIsReportedAndForgottenWhenThereIsNoCooldown() {
         MojangSkinService service = new MojangSkinService();
+        service.failureTtl(Duration.ZERO);
         var cache = new ConcurrentHashMap<String, MojangSkinService.Cached>();
         CompletableFuture<Skin> result = service.lookup(cache, "steve", key -> {
             throw new IllegalStateException("broken");

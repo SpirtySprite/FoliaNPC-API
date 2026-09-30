@@ -30,10 +30,17 @@ public final class MojangSkinService {
     private final ConcurrentHashMap<String, Cached> nameCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Cached> idCache = new ConcurrentHashMap<>();
 
+    private final ConcurrentHashMap<String, Cached> urlCache = new ConcurrentHashMap<>();
+
     private volatile long ttlMillis = Duration.ofMinutes(30).toMillis();
+    private volatile long failureTtlMillis = Duration.ofSeconds(5).toMillis();
 
     public void ttl(Duration ttl) {
         this.ttlMillis = Math.max(0, ttl.toMillis());
+    }
+
+    public void failureTtl(Duration ttl) {
+        this.failureTtlMillis = Math.max(0, ttl.toMillis());
     }
 
     public CompletableFuture<Skin> byName(String name) {
@@ -51,7 +58,7 @@ public final class MojangSkinService {
         long now = System.currentTimeMillis();
         boolean[] fresh = new boolean[1];
         Cached entry = cache.compute(key, (ignored, existing) -> {
-            if (existing != null && existing.expiresAt() > now && !existing.skin().isCompletedExceptionally()) {
+            if (existing != null && existing.expiresAt() > now) {
                 return existing;
             }
             fresh[0] = true;
@@ -67,7 +74,12 @@ public final class MojangSkinService {
             }
             fetched.whenComplete((result, error) -> {
                 if (error != null) {
-                    cache.remove(key, entry);
+                    long cooldown = failureTtlMillis;
+                    if (cooldown > 0) {
+                        cache.replace(key, entry, new Cached(pending, System.currentTimeMillis() + cooldown));
+                    } else {
+                        cache.remove(key, entry);
+                    }
                     pending.completeExceptionally(error);
                 } else {
                     pending.complete(result);
@@ -80,6 +92,10 @@ public final class MojangSkinService {
     private static final String MINESKIN = "https://api.mineskin.org/generate/url";
 
     public CompletableFuture<Skin> byUrl(String imageUrl) {
+        return lookup(urlCache, imageUrl, this::generateFromUrl);
+    }
+
+    private CompletableFuture<Skin> generateFromUrl(String imageUrl) {
         JsonObject payload = new JsonObject();
         payload.addProperty("url", imageUrl);
         String body = payload.toString();

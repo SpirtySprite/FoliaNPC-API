@@ -81,6 +81,12 @@ public final class FoliaNpc {
             }
 
             @EventHandler
+            public void onVehicleMove(org.bukkit.event.vehicle.VehicleMoveEvent e) {
+                net.folianpc.internal.PassengerTracking.onVehicleMoved(
+                        e.getVehicle(), e.getFrom(), e.getTo(), tracker);
+            }
+
+            @EventHandler
             public void onMove(PlayerMoveEvent e) {
                 if (e.getTo() == null || e.getFrom().getBlockX() == e.getTo().getBlockX()
                         && e.getFrom().getBlockY() == e.getTo().getBlockY()
@@ -161,6 +167,11 @@ public final class FoliaNpc {
 
     public FoliaNpc skinCacheTtl(java.time.Duration ttl) {
         skins.ttl(ttl);
+        return this;
+    }
+
+    public FoliaNpc skinFailureCooldown(java.time.Duration cooldown) {
+        skins.failureTtl(cooldown);
         return this;
     }
 
