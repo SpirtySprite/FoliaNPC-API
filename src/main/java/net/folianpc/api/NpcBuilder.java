@@ -15,6 +15,7 @@ public final class NpcBuilder {
     float yaw;
     float pitch;
     boolean lookAtPlayers;
+    boolean cancelItemUse;
     NpcClickListener listener;
     Skin skin;
     boolean mirrorSkin;
@@ -53,6 +54,10 @@ public final class NpcBuilder {
 
     public NpcBuilder lookAtPlayers(boolean enabled) {
         this.lookAtPlayers = enabled;
+        return this;
+    }
+    public NpcBuilder cancelItemUse(boolean enabled) {
+        this.cancelItemUse = enabled;
         return this;
     }
 

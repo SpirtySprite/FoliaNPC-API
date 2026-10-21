@@ -37,6 +37,10 @@ public final class NpcManager {
     private final ConcurrentHashMap<UUID, NpcImpl> byId = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, NpcImpl> byEntityId = new ConcurrentHashMap<>();
 
+    private record ItemUseGuard(NpcImpl npc, long expiresAt, java.util.Set<org.bukkit.inventory.EquipmentSlot> hands) {}
+    private final ConcurrentHashMap<UUID, ItemUseGuard> itemUseGuards = new ConcurrentHashMap<>();
+    private static final long ITEM_USE_WINDOW_MILLIS = 250;
+
     private volatile double viewDistance = 48.0;
     private volatile RoutePlanner planner = new RoutePlanner();
 
@@ -67,6 +71,7 @@ public final class NpcManager {
         this.backend = backend;
         this.tracker = tracker;
         backend.onInteract(this::handleInteract);
+        backend.onRightClick(this::observeRightClick);
     }
 
     public void viewDistance(double blocks) {
@@ -110,6 +115,7 @@ public final class NpcManager {
     void unregister(NpcImpl npc) {
         byId.remove(npc.id());
         byEntityId.remove(npc.entityId());
+        itemUseGuards.entrySet().removeIf(entry -> entry.getValue().npc() == npc);
         for (UUID viewerId : npc.viewers()) {
             PlayerTracker.Tracked t = tracker.get(viewerId);
             if (t != null) {
@@ -125,6 +131,7 @@ public final class NpcManager {
     }
 
     public void forgetPlayer(UUID playerId) {
+        itemUseGuards.remove(playerId);
         for (NpcImpl npc : byId.values()) {
             npc.forget(playerId);
         }
@@ -322,6 +329,7 @@ public final class NpcManager {
     }
 
     public void dropPlayer(UUID playerId) {
+        itemUseGuards.remove(playerId);
         for (NpcImpl npc : byId.values()) {
             npc.forget(playerId);
             npc.dropVisibility(playerId);
@@ -471,6 +479,44 @@ public final class NpcManager {
 
     private static final double MAX_INTERACT_DISTANCE_SQUARED = 10.0 * 10.0;
 
+    private void observeRightClick(Player viewer, int entityId) {
+        UUID id = viewer.getUniqueId();
+        NpcImpl npc = byEntityId.get(entityId);
+        PlayerTracker.Tracked t = tracker.get(id);
+        if (npc == null || !npc.cancelItemUse() || t == null || !npc.viewers().contains(id)
+                || !t.world().equals(npc.position().world())
+                || npc.position().distanceSquared(t.x(), t.y(), t.z()) > MAX_INTERACT_DISTANCE_SQUARED) {
+            itemUseGuards.remove(id);
+            return;
+        }
+        itemUseGuards.put(id, new ItemUseGuard(npc, clock.getAsLong() + ITEM_USE_WINDOW_MILLIS,
+                ConcurrentHashMap.newKeySet()));
+    }
+    public void onItemUse(org.bukkit.event.player.PlayerInteractEvent event) {
+        if ((event.getAction() == org.bukkit.event.block.Action.RIGHT_CLICK_AIR
+                || event.getAction() == org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK)
+                && denyItemUse(event.getPlayer(), event.getHand())) {
+            event.setUseItemInHand(Event.Result.DENY);
+        }
+    }
+
+    public boolean denyItemUse(Player viewer, org.bukkit.inventory.EquipmentSlot hand) {
+        UUID id = viewer.getUniqueId();
+        ItemUseGuard guard = itemUseGuards.get(id);
+        if (guard == null) {
+            return false;
+        }
+        PlayerTracker.Tracked t = tracker.get(id);
+        if (clock.getAsLong() >= guard.expiresAt() || !guard.npc().cancelItemUse()
+                || byId.get(guard.npc().id()) != guard.npc() || !guard.npc().viewers().contains(id)
+                || t == null || !t.world().equals(guard.npc().position().world())
+                || guard.npc().position().distanceSquared(t.x(), t.y(), t.z()) > MAX_INTERACT_DISTANCE_SQUARED) {
+            itemUseGuards.remove(id, guard);
+            return false;
+        }
+        return hand != null && guard.hands().add(hand);
+    }
+
     private boolean handleInteract(org.bukkit.entity.Player viewer, int entityId,
                                    net.folianpc.api.ClickType type, boolean sneaking) {
         NpcImpl npc = byEntityId.get(entityId);
@@ -532,6 +578,7 @@ public final class NpcManager {
     }
 
     public void close() {
+        itemUseGuards.clear();
         for (NpcImpl npc : byId.values()) {
             NpcSnapshot snapshot = npc.snapshot();
             int[] lineIds = npc.nametagIds();

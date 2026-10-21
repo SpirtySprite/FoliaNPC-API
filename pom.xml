@@ -31,14 +31,12 @@
             <version>1.21.4-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
-        <!-- Only used to inject a netty handler for reading interact packets; the server ships it. -->
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
             <version>4.1.97.Final</version>
             <scope>provided</scope>
         </dependency>
-        <!-- Parsing Mojang's skin API responses; the server bundles Gson. -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>

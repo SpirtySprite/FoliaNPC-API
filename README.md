@@ -90,7 +90,7 @@ entities.
 	<dependency>
 	    <groupId>com.github.SpirtySprite</groupId>
 	    <artifactId>FoliaNPC-API</artifactId>
-	    <version>1.1.1</version>
+	    <version>1.2.2</version>
 	</dependency>
 ```
 
@@ -637,6 +637,32 @@ NMS classes expose it; on older servers that slot is silently ignored rather tha
 with this library's overall "degrade a feature rather than break the NPC" philosophy.
 
 ## Clicks
+
+To prevent held items being used when a player right-clicks an NPC, enable
+`cancelItemUse` (disabled by default):
+
+```java
+Npc npc = npcs.builder()
+    .location(location)
+    .cancelItemUse(true)
+    .action(ClickType.RIGHT, Actions.message("<green>Hello!"))
+    .spawn();
+
+npc.cancelItemUse(true);
+npc.cancelItemUse(false);
+```
+
+NPC actions still run. This is separate from cancelling `NpcInteractEvent`, which
+stops NPC callbacks/actions. Suppression covers both hands and remains active
+during the NPC action cooldown. The setting is copied and included in `NpcData`.
+
+Packet-only NPCs have no Bukkit entity interaction event. The library associates
+right-click packets for a visible, nearby NPC with up to one following Bukkit
+item-use event per hand within 250 ms. This short correlation window is a best
+effort: a brief client animation may appear, an unrelated use immediately after
+the click can be denied, and heavy server delay can outlast the window. Validate
+bows, food, armor and both hands on your supported Paper/Folia versions.
+
 
 For the simple case, a one-shot listener:
 

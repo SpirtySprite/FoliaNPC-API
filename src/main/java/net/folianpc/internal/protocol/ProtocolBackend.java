@@ -36,6 +36,9 @@ public interface ProtocolBackend {
 
     void onInteract(InteractSink sink);
 
+    default void onRightClick(java.util.function.BiConsumer<Player, Integer> observer) {
+    }
+
     @FunctionalInterface
     interface InteractSink {
         boolean handle(Player viewer, int entityId, ClickType type, boolean sneaking);

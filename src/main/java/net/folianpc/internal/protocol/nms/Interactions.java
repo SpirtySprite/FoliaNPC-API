@@ -8,7 +8,7 @@ import java.lang.reflect.Method;
 
 final class Interactions {
 
-    record Click(int entityId, ClickType type, boolean sneaking) {
+    record Click(int entityId, ClickType type, boolean sneaking, boolean dispatch) {
     }
 
     private final Class<?> interactClass;
@@ -55,27 +55,23 @@ final class Interactions {
     Click decode(Player viewer, Object packet) {
         if (attackClass != null && attackClass.isInstance(packet)) {
             int entityId = (int) Reflect.get(attackEntityIdField, packet);
-            return new Click(entityId, ClickType.LEFT, viewer.isSneaking());
+            return new Click(entityId, ClickType.LEFT, viewer.isSneaking(), true);
         }
 
         if (actionField != null) {
             Object action = Reflect.get(actionField, packet);
             String type = ((Enum<?>) Reflect.invoke(actionTypeMethod, action)).name();
 
-            if (type.equals("INTERACT_AT") || "OFF_HAND".equals(hand(action))) {
-                return null;
-            }
+            boolean dispatch = !type.equals("INTERACT_AT") && !"OFF_HAND".equals(hand(action));
             int entityId = (int) Reflect.get(entityIdField, packet);
             boolean sneaking = (boolean) Reflect.get(sneakingField, packet);
-            return new Click(entityId, type.equals("ATTACK") ? ClickType.LEFT : ClickType.RIGHT, sneaking);
+            return new Click(entityId, type.equals("ATTACK") ? ClickType.LEFT : ClickType.RIGHT, sneaking, dispatch);
         }
 
-        if ("OFF_HAND".equals(hand(packet))) {
-            return null;
-        }
+        boolean dispatch = !"OFF_HAND".equals(hand(packet));
         int entityId = (int) Reflect.get(entityIdField, packet);
         boolean sneaking = (boolean) Reflect.get(sneakingField, packet);
-        return new Click(entityId, ClickType.RIGHT, sneaking);
+        return new Click(entityId, ClickType.RIGHT, sneaking, dispatch);
     }
 
     private String hand(Object holder) {

@@ -60,6 +60,7 @@ public final class NmsProtocolBackend implements ProtocolBackend {
     private final Equipment equipment;
     private final Animations animations;
 
+    private volatile java.util.function.BiConsumer<Player, Integer> rightClick = (viewer, id) -> {};
     private volatile InteractSink sink = (viewer, id, type, sneaking) -> false;
     private volatile BiFunction<Player, String, String> nametagResolver = (viewer, text) -> text;
     private volatile boolean debug;
@@ -329,12 +330,20 @@ public final class NmsProtocolBackend implements ProtocolBackend {
         this.sink = sink;
     }
 
+    @Override
+    public void onRightClick(java.util.function.BiConsumer<Player, Integer> observer) {
+        this.rightClick = observer;
+    }
+
     private boolean onInbound(Player viewer, Object packet) {
         if (!interactions.isInteract(packet)) {
             return false;
         }
         Interactions.Click click = interactions.decode(viewer, packet);
-        return click != null && sink.handle(viewer, click.entityId(), click.type(), click.sneaking());
+        if (click != null && click.type() == net.folianpc.api.ClickType.RIGHT) {
+            rightClick.accept(viewer, click.entityId());
+        }
+        return click != null && click.dispatch() && sink.handle(viewer, click.entityId(), click.type(), click.sneaking());
     }
 
     private String[] viewerSkin(Player viewer) {

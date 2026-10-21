@@ -80,6 +80,11 @@ public final class FoliaNpc {
                 backend.ejectViewer(e.getPlayer());
             }
 
+            @EventHandler(priority = EventPriority.HIGHEST)
+            public void onItemUse(org.bukkit.event.player.PlayerInteractEvent e) {
+                manager.onItemUse(e);
+            }
+
             @EventHandler
             public void onMove(PlayerMoveEvent e) {
                 if (e.getTo() == null || e.getFrom().getBlockX() == e.getTo().getBlockX()
@@ -127,6 +132,7 @@ public final class FoliaNpc {
         Position pos = new Position(b.world, b.x, b.y, b.z, b.yaw, b.pitch);
         NpcImpl npc = manager.create(UUID.randomUUID(), b.name, b.type, pos);
         npc.lookAtPlayers(b.lookAtPlayers);
+        npc.cancelItemUse(b.cancelItemUse);
         if (b.listener != null) {
             npc.onClick(b.listener);
         }
@@ -189,6 +195,7 @@ public final class FoliaNpc {
                 data.type() != null ? data.type() : org.bukkit.entity.EntityType.PLAYER;
         NpcImpl npc = manager.create(id, data.name(), type, pos);
         npc.lookAtPlayers(data.lookAtPlayers());
+        npc.cancelItemUse(data.cancelItemUse());
         if (data.skin() != null) {
             npc.skin(data.skin());
         }

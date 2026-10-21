@@ -12,6 +12,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 final class RecordingProtocolBackend implements ProtocolBackend {
 
+    private java.util.function.BiConsumer<Player, Integer> rightClick = (viewer, id) -> {};
+
+    @Override
+    public void onRightClick(java.util.function.BiConsumer<Player, Integer> observer) {
+        rightClick = observer;
+    }
+
+    void fireRightClickPacket(Player viewer, int entityId) {
+        rightClick.accept(viewer, entityId);
+    }
+
     record Show(Player viewer, NpcSnapshot npc) {
     }
 
@@ -112,10 +123,16 @@ final class RecordingProtocolBackend implements ProtocolBackend {
     }
 
     void fireInteract(Player viewer, int entityId, ClickType type) {
+        if (type == ClickType.RIGHT) {
+            fireRightClickPacket(viewer, entityId);
+        }
         sink.handle(viewer, entityId, type, false);
     }
 
     void fireInteract(Player viewer, int entityId, ClickType type, boolean sneaking) {
+        if (type == ClickType.RIGHT) {
+            fireRightClickPacket(viewer, entityId);
+        }
         sink.handle(viewer, entityId, type, sneaking);
     }
 }

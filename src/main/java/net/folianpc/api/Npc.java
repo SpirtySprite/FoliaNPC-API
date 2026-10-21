@@ -29,6 +29,9 @@ public interface Npc {
     Npc lookAtPlayers(boolean enabled);
 
     boolean lookAtPlayers();
+    Npc cancelItemUse(boolean enabled);
+
+    boolean cancelItemUse();
 
     Npc onClick(NpcClickListener listener);
 

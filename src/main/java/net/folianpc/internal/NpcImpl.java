@@ -70,6 +70,7 @@ public final class NpcImpl implements Npc {
     private volatile boolean mirrorSkin;
     private volatile NpcClickListener clickListener;
     private volatile boolean lookAtPlayers;
+    private volatile boolean cancelItemUse;
     private volatile boolean removed;
     private volatile long cooldownMillis;
 
@@ -271,6 +272,17 @@ public final class NpcImpl implements Npc {
 
     Set<UUID> viewers() {
         return viewers;
+    }
+
+    @Override
+    public Npc cancelItemUse(boolean enabled) {
+        this.cancelItemUse = enabled;
+        return this;
+    }
+
+    @Override
+    public boolean cancelItemUse() {
+        return cancelItemUse;
     }
 
     NpcClickListener clickListener() {
@@ -850,7 +862,7 @@ public final class NpcImpl implements Npc {
         return new NpcData(uuid, name, type, position.world(),
                 position.x(), position.y(), position.z(), position.yaw(), position.pitch(),
                 lookAtPlayers, skin, mirrorSkin, Map.copyOf(equipment), nametag, appearance(), pose,
-                baby, showInTabList, mobVariant, owner, nametagStyle);
+                baby, showInTabList, mobVariant, owner, nametagStyle, cancelItemUse);
     }
 
     @Override
@@ -868,6 +880,7 @@ public final class NpcImpl implements Npc {
     public Npc copy(Location at) {
         NpcImpl clone = manager.create(UUID.randomUUID(), name, type, toPosition(at));
         clone.lookAtPlayers = lookAtPlayers;
+        clone.cancelItemUse = cancelItemUse;
         clone.clickListener = clickListener;
         clone.skin = skin;
         clone.mirrorSkin = mirrorSkin;
